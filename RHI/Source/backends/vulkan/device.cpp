@@ -7,21 +7,70 @@
 #include "device.h"
 #include "common.h"
 
+#include <tracy/TracyVulkan.hpp>
+
 #include <TL/Log.hpp>
-#include <TL/Containers/Optional.hpp>
 #include <TL/Allocator/Allocator.hpp>
-#include <TL/Containers/Map.hpp>
+#include <TL/Containers/InlineVector.hpp>
 
 #include <algorithm>
+#include <bit>
+#include <cstring>
 #include <format>
-
-#include <tracy/Tracy.hpp>
 
 namespace RHI::Vulkan
 {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // DeleteQueue
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void DeleteQueue::shutdown(IDevice* device)
+    {
+        Flush(device, UINT64_MAX);
+        TL_ASSERT(m_entries.empty());
+    }
+
+    // Entries are destroyed in submission order, so each Push site must push child-first
+    // (views before the image/buffer they view, resources before their memory allocation).
+    void DeleteQueue::Flush(IDevice* device, uint64_t timeline)
+    {
+        size_t count = 0;
+        for (const DeferredResource& entry : m_entries)
+        {
+            if (entry.timeline <= timeline)
+            {
+                switch (entry.type)
+                {
+                case DeferredResourceType::Allocation: vmaFreeMemory(device->m_deviceAllocator, std::bit_cast<VmaAllocation>(entry.handle)); break;
+                case DeferredResourceType::Buffer: vkDestroyBuffer(device->m_device, std::bit_cast<VkBuffer>(entry.handle), nullptr); break;
+                case DeferredResourceType::BufferView: vkDestroyBufferView(device->m_device, std::bit_cast<VkBufferView>(entry.handle), nullptr); break;
+                case DeferredResourceType::Image: vkDestroyImage(device->m_device, std::bit_cast<VkImage>(entry.handle), nullptr); break;
+                case DeferredResourceType::ImageView: vkDestroyImageView(device->m_device, std::bit_cast<VkImageView>(entry.handle), nullptr); break;
+                case DeferredResourceType::Sampler: vkDestroySampler(device->m_device, std::bit_cast<VkSampler>(entry.handle), nullptr); break;
+                case DeferredResourceType::Pipeline: vkDestroyPipeline(device->m_device, std::bit_cast<VkPipeline>(entry.handle), nullptr); break;
+                case DeferredResourceType::DescriptorPool: vkDestroyDescriptorPool(device->m_device, std::bit_cast<VkDescriptorPool>(entry.handle), nullptr); break;
+                case DeferredResourceType::QueryPool: vkDestroyQueryPool(device->m_device, std::bit_cast<VkQueryPool>(entry.handle), nullptr); break;
+                case DeferredResourceType::Swapchain: vkDestroySwapchainKHR(device->m_device, std::bit_cast<VkSwapchainKHR>(entry.handle), nullptr); break;
+                case DeferredResourceType::Surface: vkDestroySurfaceKHR(device->m_instance, std::bit_cast<VkSurfaceKHR>(entry.handle), nullptr); break;
+                case DeferredResourceType::Semaphore: vkDestroySemaphore(device->m_device, std::bit_cast<VkSemaphore>(entry.handle), nullptr); break;
+                case DeferredResourceType::AccelerationStructure: vkDestroyAccelerationStructureKHR(device->m_device, std::bit_cast<VkAccelerationStructureKHR>(entry.handle), nullptr); break;
+                case DeferredResourceType::Micromap: vkDestroyMicromapEXT(device->m_device, std::bit_cast<VkMicromapEXT>(entry.handle), nullptr); break;
+                }
+            }
+            else
+            {
+                m_entries[count++] = entry;
+            }
+        }
+        m_entries.resize(count);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // IDevice lifetime
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     Device* createDevice(const ApplicationInfo& appInfo)
     {
-        ZoneScoped;
         auto device = TL::constructFrom<IDevice>(TL::Context::getDefaultAllocator());
         auto result = device->Init(appInfo);
         TL_ASSERT(IsSuccess(result));
@@ -83,44 +132,7 @@ namespace RHI::Vulkan
 
     inline static VkBool32 DebugMessengerCallbacks(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
     {
-        TL::String message = std::format("Vulkan Validation: {}\n", pCallbackData->pMessage);
-
-        if (pCallbackData->objectCount > 0)
-        {
-            message += "Objects:\n";
-            for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
-            {
-                const char* objectName = pCallbackData->pObjects[i].pObjectName;
-
-                message += std::format(
-                    "  [{}] Type: {}, Name: {}\n",
-                    i,
-                    ObjectTypeToName(pCallbackData->pObjects[i].objectType),
-                    pCallbackData->pObjects[i].pObjectName ? pCallbackData->pObjects[i].pObjectName : "Unnamed");
-            }
-        }
-
-        if (pCallbackData->cmdBufLabelCount > 0)
-        {
-            message += "Debug Markers:\n";
-            for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
-            {
-                const char* labelName = pCallbackData->pCmdBufLabels[i].pLabelName;
-                auto [r, g, b, a] = pCallbackData->pCmdBufLabels[i].color;
-                message += std::format("  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n", i, labelName, r, g, b, a);
-            }
-        }
-
-        if (pCallbackData->queueLabelCount > 0)
-        {
-            message += "Queue Labels:\n";
-            for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
-            {
-                const char* labelName = pCallbackData->pQueueLabels[i].pLabelName;
-                auto [r, g, b, a] = pCallbackData->pQueueLabels[i].color;
-                message += std::format("  [{}] {} (color: [{:.2f}, {:.2f}, {:.2f}, {:.2f}])\n", i, labelName, r, g, b, a);
-            }
-        }
+        const char* message = pCallbackData->pMessage;
 
         switch (messageSeverity)
         {
@@ -138,21 +150,87 @@ namespace RHI::Vulkan
     // IQueue
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VkResult IQueue::Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex)
+    VkResult IQueue::Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex, VkQueueFlags queueFlags, uint32_t timestampValidBits)
     {
         m_device = device;
         m_familyIndex = familyIndex;
+        m_lastSubmitValue.store(0, std::memory_order_relaxed);
 
         vkGetDeviceQueue(device->m_device, familyIndex, queueIndex, &m_queue);
         if (debugName)
-            m_device->SetDebugName(m_queue, debugName);
+            m_device->SetDebugName(VK_OBJECT_TYPE_QUEUE, (uint64_t)m_queue, debugName);
 
+        VkSemaphoreTypeCreateInfo timelineInfo{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue = 0,
+        };
+        VkSemaphoreCreateInfo semaphoreInfo{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &timelineInfo,
+        };
+        VkResult result = vkCreateSemaphore(device->m_device, &semaphoreInfo, nullptr, &m_submissionTimeline);
+        if (result != VK_SUCCESS)
+            return result;
+        if (debugName)
+            m_device->SetDebugName(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)m_submissionTimeline, TL::fmt("{}: submission timeline", debugName));
+
+#if defined(TRACY_ENABLE)
+        const VkQueueFlags tracyQueueCapabilities = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
+        if ((queueFlags & tracyQueueCapabilities) == 0 || timestampValidBits == 0)
+            return VK_SUCCESS;
+
+        VkCommandPoolCreateInfo poolInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = familyIndex,
+        };
+        VkCommandPool tracyCommandPool = VK_NULL_HANDLE;
+        result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &tracyCommandPool);
+        if (result != VK_SUCCESS)
+        {
+            vkDestroySemaphore(device->m_device, m_submissionTimeline, nullptr);
+            m_submissionTimeline = VK_NULL_HANDLE;
+            return result;
+        }
+
+        VkCommandBufferAllocateInfo allocateInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = tracyCommandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+        VkCommandBuffer tracyCommandBuffer = VK_NULL_HANDLE;
+        result = vkAllocateCommandBuffers(device->m_device, &allocateInfo, &tracyCommandBuffer);
+        if (result != VK_SUCCESS)
+        {
+            vkDestroyCommandPool(device->m_device, tracyCommandPool, nullptr);
+            vkDestroySemaphore(device->m_device, m_submissionTimeline, nullptr);
+            m_submissionTimeline = VK_NULL_HANDLE;
+            return result;
+        }
+
+        m_tracyContext = TracyVkContext(device->m_instance, device->m_physicalDevice, device->m_device, m_queue, tracyCommandBuffer, vkGetInstanceProcAddr, vkGetDeviceProcAddr);
+        if (debugName)
+            TracyVkContextName(static_cast<TracyVkCtx>(m_tracyContext), debugName, static_cast<uint16_t>(std::strlen(debugName)));
+        vkFreeCommandBuffers(device->m_device, tracyCommandPool, 1, &tracyCommandBuffer);
+        vkDestroyCommandPool(device->m_device, tracyCommandPool, nullptr);
+#endif
         return VK_SUCCESS;
     }
 
     void IQueue::Shutdown()
     {
         vkQueueWaitIdle(m_queue);
+#if defined(TRACY_ENABLE)
+        if (m_tracyContext)
+        {
+            TracyVkDestroy(static_cast<TracyVkCtx>(m_tracyContext));
+            m_tracyContext = nullptr;
+        }
+#endif
+        vkDestroySemaphore(m_device->m_device, m_submissionTimeline, nullptr);
+        m_submissionTimeline = VK_NULL_HANDLE;
     }
 
     void queueBeginAnnotation(IQueue* self, const char* name, uint32_t bgra)
@@ -183,9 +261,13 @@ namespace RHI::Vulkan
 
     void queueSubmit(IQueue* self, const QueueSubmitInfo& submitInfo)
     {
-        TL::Vector<VkSemaphoreSubmitInfo> waitSemaphores{self->m_device->m_arena};
-        TL::Vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos{self->m_device->m_arena};
-        TL::Vector<VkSemaphoreSubmitInfo> signalSemaphores{self->m_device->m_arena};
+        TL_ASSERT(submitInfo.waitFences.size() <= Limits::QueueFences, "Too many queue wait fences");
+        TL_ASSERT(submitInfo.signalFences.size() + submitInfo.presentSwapchains.size() <= Limits::QueueFences, "Too many queue signal fences");
+        TL_ASSERT(submitInfo.commandLists.size() <= Limits::QueueCommandBuffers, "Too many submitted command buffers");
+        TL_ASSERT(submitInfo.presentSwapchains.size() <= Limits::QueueSwapchains, "Too many presented swapchains");
+        TL::InlineVector<VkSemaphoreSubmitInfo, Limits::QueueFences> waitSemaphores;
+        TL::InlineVector<VkCommandBufferSubmitInfo, Limits::QueueCommandBuffers> commandBufferSubmitInfos;
+        TL::InlineVector<VkSemaphoreSubmitInfo, Limits::QueueFences> signalSemaphores;
 
         for (auto _fence : submitInfo.waitFences)
         {
@@ -222,15 +304,22 @@ namespace RHI::Vulkan
         {
             ISwapchain* swapchain = (ISwapchain*)_swapchain;
 
-            VkSemaphore presentSemaphore = swapchain->m_presentSemaphore[swapchain->m_presentSemaphoreIndex];
+            TL_ASSERT(swapchain->m_imageAcquired);
+            VkSemaphore presentSemaphore = swapchain->m_presentSemaphore[swapchain->m_imageIndex];
             signalSemaphores.push_back({
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .semaphore = presentSemaphore,
+                .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             });
         }
 
-        // TODO(cleanup): m_lastSubmitValue is never incremented, so the timeline-based DeleteQueue
-        // deferral is effectively inert. Left for a dedicated GPU-sync pass (needs runtime testing).
+        const uint64_t submitValue = self->m_lastSubmitValue.fetch_add(1, std::memory_order_relaxed) + 1;
+        signalSemaphores.push_back({
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            .semaphore = self->m_submissionTimeline,
+            .value = submitValue,
+            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        });
 
         VkSubmitInfo2 vksubmitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
@@ -245,22 +334,16 @@ namespace RHI::Vulkan
         };
         VK_CHECK(vkQueueSubmit2(self->m_queue, 1, &vksubmitInfo, VK_NULL_HANDLE));
 
-        // TODO(cleanup): these two vkQueueWaitIdle calls fully serialize the GPU every submit,
-        // defeating the timeline-semaphore design. Left for a dedicated GPU-sync pass.
-        vkQueueWaitIdle(self->m_queue);
-
         if (submitInfo.presentSwapchains.empty() == false)
         {
-            TL::Vector<VkSwapchainKHR> swapchains{self->m_device->m_arena};
-            TL::Vector<uint32_t> imageIndices{self->m_device->m_arena};
-            TL::Vector<VkSemaphore> presentWaitSemaphores{self->m_device->m_arena};
+            TL::InlineVector<VkSwapchainKHR, Limits::QueueSwapchains> swapchains;
+            TL::InlineVector<uint32_t, Limits::QueueSwapchains> imageIndices;
+            TL::InlineVector<VkSemaphore, Limits::QueueSwapchains> presentWaitSemaphores;
 
             for (auto _swapchain : submitInfo.presentSwapchains)
             {
                 ISwapchain* swapchain = (ISwapchain*)_swapchain;
-                VkSemaphore semaphore = swapchain->m_presentSemaphore[swapchain->m_presentSemaphoreIndex];
-                swapchain->m_presentSemaphoreIndex += 1;
-                swapchain->m_presentSemaphoreIndex %= ISwapchain::MaxImageCount;
+                VkSemaphore semaphore = swapchain->m_presentSemaphore[swapchain->m_imageIndex];
                 presentWaitSemaphores.push_back(semaphore);
                 imageIndices.push_back(swapchain->m_imageIndex);
                 swapchains.push_back(swapchain->m_swapchain);
@@ -277,14 +360,8 @@ namespace RHI::Vulkan
                 .pResults = nullptr,
             };
             vkQueuePresentKHR(self->m_queue, &presentInfos);
-        }
-
-        vkQueueWaitIdle(self->m_queue);
-
-        for (auto _swapchain : submitInfo.presentSwapchains)
-        {
-            ISwapchain* swapchain = (ISwapchain*)_swapchain;
-            swapchain->AcquireNextImage(self->m_device);
+            for (auto _swapchain : submitInfo.presentSwapchains)
+                ((ISwapchain*)_swapchain)->m_imageAcquired = false;
         }
     }
 
@@ -309,18 +386,8 @@ namespace RHI::Vulkan
 
     ///
 
-    IDevice::IDevice()
-    {
-        m_objectAllocator = TL::Context::getDefaultAllocator();
-        m_destroyQueue    = TL::CreatePtr<DeleteQueue>();
-    }
-
-    IDevice::~IDevice() = default;
-
     ResultCode IDevice::Init(const ApplicationInfo& appInfo)
     {
-        ZoneScoped;
-
         m_backend = BackendType::Vulkan1_3;
 
         VulkanResult result;
@@ -329,30 +396,8 @@ namespace RHI::Vulkan
 
         constexpr bool EnableAsyncQueues = true;
 
-        TL::Map<TL::String, VkLayerProperties> availableInstanceLayers;
-        TL::Map<TL::String, VkExtensionProperties> availableInstanceExtensions;
-
-        uint32_t instanceLayerCount;
-        VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
-        TL::Vector<VkLayerProperties> instanceLayers;
-        instanceLayers.resize(instanceLayerCount);
-        VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayers.data()));
-
-        for (VkLayerProperties layer : instanceLayers)
-            availableInstanceLayers[layer.layerName] = layer;
-
-        {
-            uint32_t instanceExtensionsCount;
-            VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, nullptr));
-            TL::Vector<VkExtensionProperties> extensions;
-            extensions.resize(instanceExtensionsCount);
-            VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionsCount, extensions.data()));
-            for (VkExtensionProperties extension : extensions)
-                availableInstanceExtensions[extension.extensionName] = extension;
-        }
-
-        TL::Vector<const char*> requiredInstanceLayers;
-        TL::Vector<const char*> requiredInstanceExtensions{
+        TL::InlineVector<const char*, 4> requiredInstanceLayers;
+        TL::InlineVector<const char*, 8> requiredInstanceExtensions{
             VK_KHR_SURFACE_EXTENSION_NAME,
 #ifdef VK_USE_PLATFORM_WIN32_KHR
             VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
@@ -388,9 +433,9 @@ namespace RHI::Vulkan
             .flags = {},
             .pApplicationInfo = &applicationInfo,
             .enabledLayerCount = (uint32_t)requiredInstanceLayers.size(),
-            .ppEnabledLayerNames = requiredInstanceLayers.data(),
+            .ppEnabledLayerNames = requiredInstanceLayers.empty() ? nullptr : requiredInstanceLayers.data(),
             .enabledExtensionCount = (uint32_t)requiredInstanceExtensions.size(),
-            .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
+            .ppEnabledExtensionNames = requiredInstanceExtensions.empty() ? nullptr : requiredInstanceExtensions.data(),
         };
 
         result = vkCreateInstance(&instanceCI, nullptr, &m_instance);
@@ -400,8 +445,8 @@ namespace RHI::Vulkan
 
         // Select the physical device
 
-        TL::Vector<const char*> requiredDeviceLayers;
-        TL::Vector<const char*> requiredDeviceExtensions{
+        TL::InlineVector<const char*, 4> requiredDeviceLayers;
+        TL::InlineVector<const char*, 16> requiredDeviceExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             // VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         };
@@ -441,41 +486,45 @@ namespace RHI::Vulkan
         {
             uint32_t physicalDeviceCount;
             VK_CHECK(vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr));
-            TL::Vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount, VK_NULL_HANDLE);
+            TL_ASSERT(physicalDeviceCount <= Limits::PhysicalDevices, "Too many Vulkan physical devices");
+            TL::InlineVector<VkPhysicalDevice, Limits::PhysicalDevices> physicalDevices;
+            physicalDevices.resize(physicalDeviceCount);
             VK_CHECK(vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data()));
             for (VkPhysicalDevice physicalDevice : physicalDevices)
             {
-                TL::Map<TL::String, VkLayerProperties> availableDeviceLayers;
+                TL::InlineVector<VkLayerProperties, Limits::EnumerationEntries> availableDeviceLayers;
                 {
                     uint32_t deviceLayerCount;
                     VK_CHECK(vkEnumerateDeviceLayerProperties(physicalDevice, &deviceLayerCount, nullptr));
-                    TL::Vector<VkLayerProperties> layers;
-                    layers.resize(deviceLayerCount);
-                    VK_CHECK(vkEnumerateDeviceLayerProperties(physicalDevice, &deviceLayerCount, layers.data()));
-                    for (VkLayerProperties layer : layers)
-                        availableDeviceLayers[layer.layerName] = layer;
+                    TL_ASSERT(deviceLayerCount <= Limits::EnumerationEntries, "Too many Vulkan device layers");
+                    availableDeviceLayers.resize(deviceLayerCount);
+                    VK_CHECK(vkEnumerateDeviceLayerProperties(physicalDevice, &deviceLayerCount, availableDeviceLayers.data()));
                 }
 
-                TL::Map<TL::String, VkExtensionProperties> availableDeviceExtensions;
+                TL::InlineVector<VkExtensionProperties, Limits::EnumerationEntries> availableDeviceExtensions;
                 {
                     uint32_t extensionsCount;
                     VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr));
-                    TL::Vector<VkExtensionProperties> extensions;
-                    extensions.resize(extensionsCount);
-                    VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extensions.data()));
-                    for (VkExtensionProperties extension : extensions)
-                        availableDeviceExtensions[extension.extensionName] = extension;
+                    TL_ASSERT(extensionsCount <= Limits::EnumerationEntries, "Too many Vulkan device extensions");
+                    availableDeviceExtensions.resize(extensionsCount);
+                    VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, availableDeviceExtensions.data()));
                 }
 
                 // search for a suitable physical device if it contains the required extensions
                 bool containAllLayers = std::all_of(requiredDeviceLayers.begin(), requiredDeviceLayers.end(), [&](const char* layer)
                     {
-                        return availableDeviceLayers.contains(layer);
+                        return std::any_of(availableDeviceLayers.begin(), availableDeviceLayers.end(), [layer](const VkLayerProperties& available)
+                            {
+                                return std::strcmp(available.layerName, layer) == 0;
+                            });
                     });
 
                 bool containAllExtensions = std::all_of(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end(), [&](const char* ext)
                     {
-                        return availableDeviceExtensions.contains(ext);
+                        return std::any_of(availableDeviceExtensions.begin(), availableDeviceExtensions.end(), [ext](const VkExtensionProperties& available)
+                            {
+                                return std::strcmp(available.extensionName, ext) == 0;
+                            });
                     });
 
                 if (containAllLayers && containAllExtensions)
@@ -498,7 +547,8 @@ namespace RHI::Vulkan
 
         uint32_t queueFamilyPropertiesCount;
         vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyPropertiesCount, nullptr);
-        TL::Vector<VkQueueFamilyProperties> queueFamilyProperties{};
+        TL_ASSERT(queueFamilyPropertiesCount <= Limits::QueueFamilies, "Too many Vulkan queue families");
+        TL::InlineVector<VkQueueFamilyProperties, Limits::QueueFamilies> queueFamilyProperties;
         queueFamilyProperties.resize(queueFamilyPropertiesCount);
         vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.data());
 
@@ -530,7 +580,7 @@ namespace RHI::Vulkan
 
         float queuePriority = 1.0f;
 
-        TL::Vector<VkDeviceQueueCreateInfo> queueCreateInfos = {};
+        TL::InlineVector<VkDeviceQueueCreateInfo, 3> queueCreateInfos;
 
         VkDeviceQueueCreateInfo queueCI{
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -613,8 +663,8 @@ namespace RHI::Vulkan
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
             .pNext = pNext,
             .robustBufferAccess2 = VK_TRUE,
-            .robustImageAccess2  = VK_TRUE,
-            .nullDescriptor      = VK_TRUE,
+            .robustImageAccess2 = VK_TRUE,
+            .nullDescriptor = VK_TRUE,
         };
         VkPhysicalDevicePipelineRobustnessFeaturesEXT pipelineRobustnessFeatures{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT,
@@ -652,7 +702,7 @@ namespace RHI::Vulkan
             .storagePushConstant8 = VK_TRUE,
             .shaderBufferInt64Atomics = VK_FALSE,
             .shaderSharedInt64Atomics = VK_FALSE,
-            .shaderFloat16 = VK_FALSE,
+            .shaderFloat16 = VK_TRUE, // shaders declare the SPIR-V Float16 capability (half in bxdf)
             .shaderInt8 = VK_TRUE,
             .descriptorIndexing = VK_TRUE,
             .shaderInputAttachmentArrayDynamicIndexing = VK_FALSE,
@@ -777,9 +827,9 @@ namespace RHI::Vulkan
             .queueCreateInfoCount = (uint32_t)queueCreateInfos.size(),
             .pQueueCreateInfos = queueCreateInfos.data(),
             .enabledLayerCount = (uint32_t)requiredDeviceLayers.size(),
-            .ppEnabledLayerNames = requiredDeviceLayers.data(),
+            .ppEnabledLayerNames = requiredDeviceLayers.empty() ? nullptr : requiredDeviceLayers.data(),
             .enabledExtensionCount = (uint32_t)requiredDeviceExtensions.size(),
-            .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
+            .ppEnabledExtensionNames = requiredDeviceExtensions.empty() ? nullptr : requiredDeviceExtensions.data(),
             .pEnabledFeatures = nullptr,
         };
 
@@ -858,18 +908,18 @@ namespace RHI::Vulkan
         m_limits.rayTracingShaderGroupHandleSize = rayTracingPipelineProperties.shaderGroupHandleSize;
         m_limits.rayTracingShaderGroupHandleAlignment = rayTracingPipelineProperties.shaderGroupHandleAlignment;
         m_limits.rayTracingShaderGroupBaseAlignment = rayTracingPipelineProperties.shaderGroupBaseAlignment;
-        result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0);
+        result = m_queue[(uint32_t)QueueType::Graphics].Init(this, "Graphics", graphicsQueueFamilyIndex, 0, queueFamilyProperties[graphicsQueueFamilyIndex].queueFlags, queueFamilyProperties[graphicsQueueFamilyIndex].timestampValidBits);
         VkResultTry(result);
 
         if (computeQueueFamilyIndex != UINT32_MAX)
         {
-            result = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex, 0);
+            result = m_queue[(uint32_t)QueueType::Compute].Init(this, "Compute", computeQueueFamilyIndex, 0, queueFamilyProperties[computeQueueFamilyIndex].queueFlags, queueFamilyProperties[computeQueueFamilyIndex].timestampValidBits);
             VkResultTry(result);
         }
 
         if (transferQueueFamilyIndex != UINT32_MAX)
         {
-            result = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex, 0);
+            result = m_queue[(uint32_t)QueueType::Transfer].Init(this, "Transfer", transferQueueFamilyIndex, 0, queueFamilyProperties[transferQueueFamilyIndex].queueFlags, queueFamilyProperties[transferQueueFamilyIndex].timestampValidBits);
             VkResultTry(result);
         }
 
@@ -880,16 +930,12 @@ namespace RHI::Vulkan
 
     void IDevice::WaitIdle()
     {
-        ZoneScoped;
-
         vkDeviceWaitIdle(m_device);
     }
 
     void IDevice::Shutdown()
     {
-        ZoneScoped;
-
-        m_destroyQueue->shutdown(this);
+        m_destroyQueue.shutdown(this);
         m_bindGroupAllocator.Shutdown();
 
         m_queue[(int)QueueType::Transfer].Shutdown();
@@ -905,18 +951,24 @@ namespace RHI::Vulkan
         vkDestroyInstance(m_instance, nullptr);
     }
 
-    void IDevice::SetDebugName(VkObjectType type, uint64_t handle, const char* name) const
+    void IDevice::SetDebugName(VkObjectType type, uint64_t handle, TL::StringView name) const
     {
         if (handle == 0 /* VK_NULL_HANDLE */) return;
 
-        if (auto fn = vkSetDebugUtilsObjectNameEXT; fn && name)
+        if (auto fn = vkSetDebugUtilsObjectNameEXT; fn && !name.empty())
         {
+            // pObjectName must be null-terminated, which a StringView does not guarantee.
+            char nameBuffer[256];
+            const size_t length = (std::min)(name.size(), sizeof(nameBuffer) - 1);
+            memcpy(nameBuffer, name.data(), length);
+            nameBuffer[length] = '\0';
+
             VkDebugUtilsObjectNameInfoEXT nameInfo{
                 .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
                 .pNext = nullptr,
                 .objectType = type,
                 .objectHandle = handle,
-                .pObjectName = name,
+                .pObjectName = nameBuffer,
             };
             fn(m_device, &nameInfo);
         }
@@ -925,7 +977,7 @@ namespace RHI::Vulkan
     template<typename Resource, typename... Args>
     inline Resource* createImpl(IDevice* device, const char* debugName, Args... args)
     {
-        Resource* resource = TL::constructFrom<Resource>(device->m_objectAllocator, debugName ? TL::StringView(debugName) : TL::StringView{});
+        Resource* resource = TL::constructFrom<Resource>(TL::Context::getDefaultAllocator(), debugName ? TL::StringView(debugName) : TL::StringView{});
         ResultCode result = resource->Init(device, args...);
         if (IsSuccess(result))
         {
@@ -939,7 +991,7 @@ namespace RHI::Vulkan
     inline void destroyImpl(IDevice* device, Resource* resource)
     {
         resource->Shutdown(device);
-        TL::destructFrom(device->m_objectAllocator, resource);
+        TL::destructFrom(TL::Context::getDefaultAllocator(), resource);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -963,9 +1015,12 @@ namespace RHI::Vulkan
 
     uint64_t deviceGarbageCollect(IDevice* self, uint64_t graphicsTimeline)
     {
-        self->m_arena.reset();
-        self->m_destroyQueue->Flush(self, graphicsTimeline);
-        return graphicsTimeline;
+        (void)graphicsTimeline;
+        uint64_t completedValue = 0;
+        IQueue* graphicsQueue = self->getQueue(QueueType::Graphics);
+        VK_CHECK(vkGetSemaphoreCounterValue(self->m_device, graphicsQueue->m_submissionTimeline, &completedValue));
+        self->m_destroyQueue.Flush(self, completedValue);
+        return completedValue;
     }
 
     uint64_t deviceGetNativeHandle(IDevice* self, NativeHandleType type, uint64_t _resource)
@@ -1076,7 +1131,6 @@ namespace RHI::Vulkan
 
     void bindGroupUpdate(IDevice* self, BindGroup* handle, const BindGroupUpdateInfo& updateInfo)
     {
-        ZoneScoped;
         auto bindGroup = (IBindGroup*)(handle);
         bindGroup->Update(self, updateInfo);
     }
@@ -1143,7 +1197,7 @@ namespace RHI::Vulkan
         return buffer->address;
     }
 
-    DeviceMemoryPtr bufferMap(IDevice* self, Buffer* _buffer, uint64_t offset,  uint64_t sizeBytes)
+    DeviceMemoryPtr bufferMap(IDevice* self, Buffer* _buffer, uint64_t offset, uint64_t sizeBytes)
     {
         (void)sizeBytes;
         IBuffer* buffer = (IBuffer*)_buffer;
@@ -1214,7 +1268,7 @@ namespace RHI::Vulkan
 
     CommandPool* createCommandPool(IDevice* self, const CommandPoolCreateInfo& createInfo)
     {
-        auto pool = TL::constructFrom<ICommandPool>(self->m_objectAllocator);
+        auto pool = TL::constructFrom<ICommandPool>(TL::Context::getDefaultAllocator());
         pool->Init(self, createInfo);
         return pool;
     }
@@ -1223,7 +1277,7 @@ namespace RHI::Vulkan
     {
         auto pool = (ICommandPool*)resource;
         pool->Shutdown(self);
-        TL::destructFrom(self->m_objectAllocator, pool);
+        TL::destructFrom(TL::Context::getDefaultAllocator(), pool);
     }
 
     Fence* createFence(IDevice* self, const FenceCreateInfo& createInfo)
@@ -1274,7 +1328,7 @@ namespace RHI::Vulkan
     SwapchainAcquireResult swapchainAcquireImage(IDevice* self, Swapchain* _swapchain)
     {
         auto swapchain = (ISwapchain*)_swapchain;
-        return swapchain->AcquireSwapchainImage();
+        return swapchain->AcquireSwapchainImage(self);
     }
 
     SurfaceCapabilities swapchainGetSurfaceCapabilities(IDevice* self, Swapchain* _swapchain)
@@ -1293,90 +1347,6 @@ namespace RHI::Vulkan
     {
         auto swapchain = (ISwapchain*)_swapchain;
         return swapchain->ConfigureSwapchain(self, configInfo);
-    }
-
-    void DeleteQueue::shutdown(IDevice* device)
-    {
-        Flush(device, UINT64_MAX);
-        TL_ASSERT(m_allocation.empty());
-        TL_ASSERT(m_buffer.empty());
-        TL_ASSERT(m_bufferView.empty());
-        TL_ASSERT(m_image.empty());
-        TL_ASSERT(m_imageView.empty());
-        TL_ASSERT(m_sampler.empty());
-        TL_ASSERT(m_pipeline.empty());
-        TL_ASSERT(m_descriptorPool.empty());
-        TL_ASSERT(m_queryPool.empty());
-        TL_ASSERT(m_swapchain.empty());
-        TL_ASSERT(m_surface.empty());
-        TL_ASSERT(m_semaphore.empty());
-        TL_ASSERT(m_accelerationStructure.empty());
-        TL_ASSERT(m_micromap.empty());
-        TL_ASSERT(m_pending.empty());
-    }
-
-    template<typename ResourceType>
-    inline static void destroyVkResource(IDevice* device, ResourceType handle)
-    {
-        if constexpr (std::is_same_v<VmaAllocation, ResourceType>) vmaFreeMemory(device->m_deviceAllocator, handle);
-        else if constexpr (std::is_same_v<VkBuffer, ResourceType>) vkDestroyBuffer(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkBufferView, ResourceType>) vkDestroyBufferView(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkImage, ResourceType>) vkDestroyImage(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkImageView, ResourceType>) vkDestroyImageView(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkSampler, ResourceType>) vkDestroySampler(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkPipeline, ResourceType>) vkDestroyPipeline(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkDescriptorPool, ResourceType>) vkDestroyDescriptorPool(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkQueryPool, ResourceType>) vkDestroyQueryPool(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkSemaphore, ResourceType>) vkDestroySemaphore(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkSwapchainKHR, ResourceType>) vkDestroySwapchainKHR(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkSurfaceKHR, ResourceType>) vkDestroySurfaceKHR(device->m_instance, handle, nullptr);
-        else if constexpr (std::is_same_v<VkAccelerationStructureKHR, ResourceType>) vkDestroyAccelerationStructureKHR(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VkMicromapEXT, ResourceType>) vkDestroyMicromapEXT(device->m_device, handle, nullptr);
-        else if constexpr (std::is_same_v<VmaBufferAllocation, ResourceType>) vmaDestroyBuffer(device->m_deviceAllocator, handle.first, handle.second);
-        else if constexpr (std::is_same_v<VmaImageAllocation, ResourceType>) vmaDestroyImage(device->m_deviceAllocator, handle.first, handle.second);
-        else
-        {
-            static_assert(false, "Invalid ResourceType");
-        }
-    }
-
-    template<typename ResourceType>
-    void DeleteQueue::FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline)
-    {
-        uint32_t deleteCount = 0;
-        for (const auto& entry : queue)
-        {
-            if (entry.timeline > timeline)
-                break;
-
-            destroyVkResource(device, entry.resource);
-
-            uint64_t handleVal = 0;
-            memcpy(&handleVal, &entry.resource, sizeof(entry.resource));
-            uint64_t key = TL::HashCombine(typeKey<ResourceType>(), handleVal);
-            TL_ASSERT(m_pending.erase(key));
-            deleteCount++;
-        }
-        queue.erase(queue.begin(), queue.begin() + deleteCount);
-    }
-
-    void DeleteQueue::Flush(IDevice* device, uint64_t timeline)
-    {
-        // flush in an order that is safe: destroy child objects before parents
-        FlushQueue(device, m_bufferView, timeline);
-        FlushQueue(device, m_imageView, timeline);
-        FlushQueue(device, m_descriptorPool, timeline);
-        FlushQueue(device, m_queryPool, timeline);
-        FlushQueue(device, m_pipeline, timeline);
-        FlushQueue(device, m_sampler, timeline);
-        FlushQueue(device, m_accelerationStructure, timeline);
-        FlushQueue(device, m_micromap, timeline);
-        FlushQueue(device, m_buffer, timeline);
-        FlushQueue(device, m_image, timeline);
-        FlushQueue(device, m_swapchain, timeline);
-        FlushQueue(device, m_surface, timeline);
-        FlushQueue(device, m_semaphore, timeline);
-        FlushQueue(device, m_allocation, timeline);
     }
 
 } // namespace RHI::Vulkan

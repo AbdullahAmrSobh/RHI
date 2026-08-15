@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TL/Containers/Vector.hpp>
+
 #ifdef RHI_PLATFORM_WINDOWS
     #define WIN32_LEAN_AND_MEAN
 #else
@@ -8,6 +10,7 @@
 
 #include <RHI/RHI.h>
 
+#include <TL/Containers/InlineVector.hpp>
 #include <TL/Utils.hpp>
 
 #include <vk_mem_alloc.h>
@@ -41,30 +44,27 @@ namespace RHI::Vulkan
     VkImageAspectFlags      ConvertImageAspect(TL::Flags<ImageAspect> imageAspect, Format format);
     VkImageSubresourceRange ConvertSubresourceRange(const ImageSubresourceRange& subresource, Format format);
 
-    class DescriptorSetWriter
+    inline static VkDescriptorType ConvertDescriptorType(BindingType bindingType)
     {
-    public:
-        DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, IBindGroupLayout* layout, TL::IAllocator& allocator);
-
-        VkWriteDescriptorSet BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<Image* const> images);
-        VkWriteDescriptorSet BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<Sampler* const> samplers);
-        VkWriteDescriptorSet BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> buffers);
-        VkWriteDescriptorSet BindAccelerationStructures(uint32_t dstBinding, uint32_t dstArray, TL::Span<AccelerationStructure* const> accelerationStructures);
-
-        TL::Span<const VkWriteDescriptorSet> GetWrites() const { return m_writes; }
-
-    private:
-        IDevice*                                                             m_device;
-        TL::IAllocator*                                                      m_allocator;
-        BindGroupLayout*                                                     m_bindGroupLayout;
-        VkDescriptorSet                                                      m_descriptorSet;
-        TL::Vector<TL::Vector<VkDescriptorImageInfo>>                        m_images;
-        TL::Vector<TL::Vector<VkDescriptorImageInfo>>                        m_sampler;
-        TL::Vector<TL::Vector<VkDescriptorBufferInfo>>                       m_buffers;
-        TL::Vector<TL::Vector<VkBufferView>>                                 m_bufferViews;
-        TL::Vector<TL::Vector<VkWriteDescriptorSetAccelerationStructureKHR>> m_accelerationStructures;
-        TL::Vector<VkWriteDescriptorSet>                                     m_writes;
-    };
+        switch (bindingType)
+        {
+        case BindingType::None: break;
+        case BindingType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case BindingType::SampledImage: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case BindingType::StorageImage: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case BindingType::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case BindingType::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case BindingType::UniformBufferDynamic: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case BindingType::StorageBufferDynamic: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        case BindingType::UniformTexelBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case BindingType::StorageTexelBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        case BindingType::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case BindingType::AccelerationStructure: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        case BindingType::Count: break;
+        }
+        TL_UNREACHABLE();
+        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    }
 
     class BindGroupAllocator
     {
@@ -107,10 +107,9 @@ namespace RHI::Vulkan
         {
         }
 
-        VkDescriptorSetLayout      handle = VK_NULL_HANDLE;
-        // TODO: Figure out why TL::Vector causes leaks here
-        std::vector<ShaderBinding> shaderBindings;
-        bool                       hasBindless = false;
+        VkDescriptorSetLayout                 handle = VK_NULL_HANDLE;
+        TL::InlineVector<ShaderBinding, 64> shaderBindings;
+        bool                                  hasBindless = false;
 
         ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
         void       Shutdown(IDevice* device);
@@ -325,7 +324,7 @@ namespace RHI::Vulkan
 
         // Interface
         uint32_t               GetImagesCount() const;
-        SwapchainAcquireResult AcquireSwapchainImage();
+        SwapchainAcquireResult AcquireSwapchainImage(IDevice* device);
         SurfaceCapabilities    GetSurfaceCapabilities(IDevice* device) const;
         ResultCode             ResizeSwapchain(IDevice* device, const ImageSize2D& size);
         ResultCode             ConfigureSwapchain(IDevice* device, const SwapchainConfigureInfo& configInfo);
@@ -341,12 +340,11 @@ namespace RHI::Vulkan
         VkSemaphore            m_acquireSemaphore[MaxImageCount] = {};
         uint32_t               m_currentAcquireIndex             = 0;
         IFence                 m_acquireFences[MaxImageCount]    = {};
-        uint32_t               m_presentSemaphoreIndex           = 0;
         VkSemaphore            m_presentSemaphore[MaxImageCount] = {};
         uint32_t               m_imageIndex                      = {};
+        bool                   m_imageAcquired                   = false;
         VkImage                m_images[MaxImageCount]           = {};
         VkImageView            m_imageViews[MaxImageCount]       = {};
-        TL::String             m_name                            = {};
         SwapchainConfigureInfo m_configuration                   = {};
         uint32_t               m_imageCount                      = 0;
         IImage*                m_imageHandle                     = nullptr;

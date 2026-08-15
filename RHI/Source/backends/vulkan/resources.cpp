@@ -427,28 +427,6 @@ namespace RHI::Vulkan
         return VK_BLEND_OP_MAX_ENUM;
     }
 
-    inline static VkDescriptorType ConvertDescriptorType(BindingType bindingType)
-    {
-        switch (bindingType)
-        {
-        case BindingType::None: break;
-        case BindingType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case BindingType::SampledImage: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case BindingType::StorageImage: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        case BindingType::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case BindingType::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case BindingType::UniformBufferDynamic: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        case BindingType::StorageBufferDynamic: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        case BindingType::UniformTexelBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        case BindingType::StorageTexelBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        case BindingType::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        case BindingType::AccelerationStructure: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        case BindingType::Count: break;
-        }
-        TL_UNREACHABLE();
-        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-    }
-
     inline static VkPresentModeKHR ConvertToPresentMode(SwapchainPresentMode presentMode)
     {
         switch (presentMode)
@@ -473,150 +451,6 @@ namespace RHI::Vulkan
         }
         TL_UNREACHABLE();
         return VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR;
-    }
-
-    DescriptorSetWriter::DescriptorSetWriter(IDevice* device, VkDescriptorSet descriptorSet, IBindGroupLayout* layout, TL::IAllocator& allocator)
-        : m_device(device)
-        , m_allocator(&allocator)
-        , m_bindGroupLayout(layout)
-        , m_descriptorSet(descriptorSet)
-        , m_images(allocator)
-        , m_sampler(allocator)
-        , m_buffers(allocator)
-        , m_bufferViews(allocator)
-        , m_accelerationStructures(allocator)
-        , m_writes(allocator)
-    {
-    }
-
-    VkWriteDescriptorSet DescriptorSetWriter::BindImages(uint32_t dstBinding, uint32_t dstArray, TL::Span<Image* const> images)
-    {
-        auto layout = (IBindGroupLayout*)(m_bindGroupLayout);
-        auto shaderBinding = layout->GetBinding(dstBinding);
-        auto isStorage = shaderBinding.type == BindingType::StorageImage;
-
-        // A storage image descriptor must be in GENERAL (or SHARED_PRESENT) regardless of whether
-        // the shader only reads it — VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL is not permitted.
-        VkImageLayout imageLayout = isStorage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkDescriptorType descriptorType = isStorage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_images.emplace_back(*m_allocator);
-        descriptorImageInfos.reserve(images.size());
-        for (auto imageHandle : images)
-        {
-            auto image = (IImage*)(imageHandle);
-            VkDescriptorImageInfo descriptorInfo = {
-                .sampler = VK_NULL_HANDLE,
-                .imageView = image->viewHandle,
-                .imageLayout = imageLayout,
-            };
-            descriptorImageInfos.push_back(descriptorInfo);
-        }
-
-        VkWriteDescriptorSet writeInfo{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = m_descriptorSet,
-            .dstBinding = dstBinding,
-            .dstArrayElement = dstArray,
-            .descriptorCount = (uint32_t)descriptorImageInfos.size(),
-            .descriptorType = descriptorType,
-            .pImageInfo = descriptorImageInfos.data(),
-        };
-        return m_writes.emplace_back(writeInfo);
-    }
-
-    VkWriteDescriptorSet DescriptorSetWriter::BindSamplers(uint32_t dstBinding, uint32_t dstArray, TL::Span<Sampler* const> samplers)
-    {
-        TL::Vector<VkDescriptorImageInfo>& descriptorImageInfos = m_sampler.emplace_back(*m_allocator);
-        descriptorImageInfos.reserve(samplers.size());
-        for (auto samplerHandle : samplers)
-        {
-            auto sampler = (ISampler*)(samplerHandle);
-
-            VkDescriptorImageInfo descriptorInfo = {
-                .sampler = sampler->handle,
-                .imageView = VK_NULL_HANDLE,
-                .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            };
-            descriptorImageInfos.push_back(descriptorInfo);
-        }
-
-        VkWriteDescriptorSet writeInfo{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = m_descriptorSet,
-            .dstBinding = dstBinding,
-            .dstArrayElement = dstArray,
-            .descriptorCount = (uint32_t)descriptorImageInfos.size(),
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .pImageInfo = descriptorImageInfos.data(),
-        };
-        return m_writes.emplace_back(writeInfo);
-    }
-
-    VkWriteDescriptorSet DescriptorSetWriter::BindBuffers(uint32_t dstBinding, uint32_t dstArray, TL::Span<const BufferBindingInfo> bufferBindings)
-    {
-        auto layout = (IBindGroupLayout*)(m_bindGroupLayout);
-        auto shaderBinding = layout->GetBinding(dstBinding);
-        auto descriptorType = ConvertDescriptorType(shaderBinding.type);
-
-        TL::Vector<VkDescriptorBufferInfo>& descriptorBufferInfos = m_buffers.emplace_back(*m_allocator);
-        descriptorBufferInfos.reserve(bufferBindings.size());
-        for (const auto& bufferBinding : bufferBindings)
-        {
-            auto buffer = (IBuffer*)(bufferBinding.buffer);
-            auto offset = bufferBinding.offset;
-            auto range = (bufferBinding.range == RemainingSize) ? VK_WHOLE_SIZE : bufferBinding.range;
-
-            VkDescriptorBufferInfo descriptorInfo = {
-                .buffer = buffer->handle,
-                .offset = offset,
-                .range = range,
-            };
-            descriptorBufferInfos.push_back(descriptorInfo);
-        }
-
-        VkWriteDescriptorSet writeInfo{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = m_descriptorSet,
-            .dstBinding = dstBinding,
-            .dstArrayElement = dstArray,
-            .descriptorCount = (uint32_t)descriptorBufferInfos.size(),
-            .descriptorType = descriptorType,
-            .pBufferInfo = descriptorBufferInfos.data(),
-        };
-        return m_writes.emplace_back(writeInfo);
-    }
-
-    VkWriteDescriptorSet DescriptorSetWriter::BindAccelerationStructures(uint32_t dstBinding, uint32_t dstArray, TL::Span<AccelerationStructure* const> accelerationStructures)
-    {
-        TL::Vector<VkWriteDescriptorSetAccelerationStructureKHR>& descriptorASInfos = m_accelerationStructures.emplace_back(*m_allocator);
-        descriptorASInfos.reserve(accelerationStructures.size());
-        for (auto asHandle : accelerationStructures)
-        {
-            auto as = (IAccelerationStructure*)(asHandle);
-
-            VkWriteDescriptorSetAccelerationStructureKHR descriptorInfo = {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
-                .pNext = nullptr,
-                .accelerationStructureCount = 1,
-                .pAccelerationStructures = &as->handle,
-            };
-            descriptorASInfos.push_back(descriptorInfo);
-        }
-
-        VkWriteDescriptorSet writeInfo{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = descriptorASInfos.data(),
-            .dstSet = m_descriptorSet,
-            .dstBinding = dstBinding,
-            .dstArrayElement = dstArray,
-            .descriptorCount = (uint32_t)descriptorASInfos.size(),
-            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-        };
-        return m_writes.emplace_back(writeInfo);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -701,10 +535,13 @@ namespace RHI::Vulkan
 
     ResultCode IBindGroupLayout::Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo)
     {
-        this->shaderBindings = {createInfo.bindings.begin(), createInfo.bindings.end()};
+        TL_ASSERT(createInfo.bindings.size() <= Limits::DescriptorBindings, "Too many descriptor bindings in one layout");
+        shaderBindings.clear();
+        for (const ShaderBinding& binding : createInfo.bindings)
+            shaderBindings.push_back(binding);
 
-        TL::Vector<VkDescriptorBindingFlags> bindingFlags{device->m_arena};
-        TL::Vector<VkDescriptorSetLayoutBinding> setLayoutBindings{device->m_arena};
+        TL::InlineVector<VkDescriptorBindingFlags, Limits::DescriptorBindings> bindingFlags;
+        TL::InlineVector<VkDescriptorSetLayoutBinding, Limits::DescriptorBindings> setLayoutBindings;
 
         // Query the physical device limits for descriptor counts
         VkPhysicalDeviceProperties2 properties{};
@@ -723,6 +560,7 @@ namespace RHI::Vulkan
         {
             auto binding = createInfo.bindings[bindingIndex];
 
+            // TODO: Update Vulkan handling for ShaderBinding::samplerType and imageViewType.
             auto isBindless = binding.arrayCount == BindlessArraySize;
 
             VkDescriptorSetLayoutBinding layoutBinding{
@@ -777,7 +615,7 @@ namespace RHI::Vulkan
         TL_ASSERT(result, "vkCreateDescriptorSetLayout failed with error: {}", result.AsString());
         if (result && !getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (uint64_t)handle, getName());
         }
         return result;
     }
@@ -797,7 +635,7 @@ namespace RHI::Vulkan
 
         ResultCode result = device->m_bindGroupAllocator.InitBindGroup(this, this->bindGroupLayout, createInfo.bindlessArrayCount);
         if (IsSuccess(result) && !getName().empty())
-            device->SetDebugName(descriptorSet, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)descriptorSet, getName());
         return result;
     }
 
@@ -808,31 +646,110 @@ namespace RHI::Vulkan
 
     void IBindGroup::Update(IDevice* device, const BindGroupUpdateInfo& updateInfo)
     {
-        ZoneScoped;
-
-        DescriptorSetWriter writer(device, this->descriptorSet, this->bindGroupLayout, device->m_arena);
-
-        for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
+        // Descriptors are written in fixed-size batches out of stack storage, one vkUpdateDescriptorSets per batch.
+        for (const BindGroupBuffersUpdateInfo& update : updateInfo.buffers)
         {
-            writer.BindBuffers(dstBindings, dstArrayelements, buffers);
+            const VkDescriptorType descriptorType = ConvertDescriptorType(bindGroupLayout->GetBinding(update.dstBinding).type);
+            for (size_t first = 0; first < update.buffers.size(); first += Limits::DescriptorBatch)
+            {
+                const size_t           count = (std::min)(Limits::DescriptorBatch, update.buffers.size() - first);
+                VkDescriptorBufferInfo infos[Limits::DescriptorBatch];
+                for (size_t i = 0; i < count; ++i)
+                {
+                    const BufferBindingInfo& binding = update.buffers[first + i];
+                    const auto*              buffer  = static_cast<const IBuffer*>(binding.buffer);
+                    infos[i] = {
+                        .buffer = buffer->handle,
+                        .offset = binding.offset,
+                        .range  = binding.range == RemainingSize ? VK_WHOLE_SIZE : binding.range,
+                    };
+                }
+                const VkWriteDescriptorSet write{
+                    .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet          = descriptorSet,
+                    .dstBinding      = update.dstBinding,
+                    .dstArrayElement = update.dstArrayElement + static_cast<uint32_t>(first),
+                    .descriptorCount = static_cast<uint32_t>(count),
+                    .descriptorType  = descriptorType,
+                    .pBufferInfo     = infos,
+                };
+                vkUpdateDescriptorSets(device->m_device, 1, &write, 0, nullptr);
+            }
         }
 
-        for (auto [dstBindings, dstArrayelements, images] : updateInfo.images)
+        for (const BindGroupImagesUpdateInfo& update : updateInfo.images)
         {
-            writer.BindImages(dstBindings, dstArrayelements, images);
+            const bool storage = bindGroupLayout->GetBinding(update.dstBinding).type == BindingType::StorageImage;
+            for (size_t first = 0; first < update.images.size(); first += Limits::DescriptorBatch)
+            {
+                const size_t          count = (std::min)(Limits::DescriptorBatch, update.images.size() - first);
+                VkDescriptorImageInfo infos[Limits::DescriptorBatch];
+                for (size_t i = 0; i < count; ++i)
+                {
+                    const auto* image = static_cast<const IImage*>(update.images[first + i]);
+                    infos[i] = {
+                        .sampler     = VK_NULL_HANDLE,
+                        .imageView   = image->viewHandle,
+                        .imageLayout = storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    };
+                }
+                const VkWriteDescriptorSet write{
+                    .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet          = descriptorSet,
+                    .dstBinding      = update.dstBinding,
+                    .dstArrayElement = update.dstArrayElement + static_cast<uint32_t>(first),
+                    .descriptorCount = static_cast<uint32_t>(count),
+                    .descriptorType  = storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                    .pImageInfo      = infos,
+                };
+                vkUpdateDescriptorSets(device->m_device, 1, &write, 0, nullptr);
+            }
         }
 
-        for (auto [dstBindings, dstArrayelements, samplers] : updateInfo.samplers)
+        for (const BindGroupSamplersUpdateInfo& update : updateInfo.samplers)
         {
-            writer.BindSamplers(dstBindings, dstArrayelements, samplers);
+            for (size_t first = 0; first < update.samplers.size(); first += Limits::DescriptorBatch)
+            {
+                const size_t          count = (std::min)(Limits::DescriptorBatch, update.samplers.size() - first);
+                VkDescriptorImageInfo infos[Limits::DescriptorBatch];
+                for (size_t i = 0; i < count; ++i)
+                {
+                    const auto* sampler = static_cast<const ISampler*>(update.samplers[first + i]);
+                    infos[i]            = {.sampler = sampler->handle};
+                }
+                const VkWriteDescriptorSet write{
+                    .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet          = descriptorSet,
+                    .dstBinding      = update.dstBinding,
+                    .dstArrayElement = update.dstArrayElement + static_cast<uint32_t>(first),
+                    .descriptorCount = static_cast<uint32_t>(count),
+                    .descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER,
+                    .pImageInfo      = infos,
+                };
+                vkUpdateDescriptorSets(device->m_device, 1, &write, 0, nullptr);
+            }
         }
 
-        for (auto [dstBinding, dstArrayElement, accelerationStructures] : updateInfo.accelerationStructures)
+        for (const BindGroupAccelerationStructureBindingInfo& update : updateInfo.accelerationStructures)
         {
-            writer.BindAccelerationStructures(dstBinding, dstArrayElement, accelerationStructures);
-        }
+            const VkAccelerationStructureKHR handle = static_cast<const IAccelerationStructure*>(update.accelerationStructure)->handle;
 
-        vkUpdateDescriptorSets(device->m_device, (uint32_t)writer.GetWrites().size(), writer.GetWrites().data(), 0, nullptr);
+            const VkWriteDescriptorSetAccelerationStructureKHR accelerationInfo{
+                .sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                .accelerationStructureCount = 1,
+                .pAccelerationStructures    = &handle,
+            };
+            const VkWriteDescriptorSet write{
+                .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext           = &accelerationInfo,
+                .dstSet          = descriptorSet,
+                .dstBinding      = update.dstBinding,
+                .dstArrayElement = update.dstArrayElement,
+                .descriptorCount = 1,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            };
+            vkUpdateDescriptorSets(device->m_device, 1, &write, 0, nullptr);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -855,7 +772,7 @@ namespace RHI::Vulkan
         VulkanResult result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &this->semaphore);
         if (result.IsSuccess() && !getName().empty())
         {
-            device->SetDebugName(semaphore, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)semaphore, getName());
         }
         return result;
     }
@@ -864,7 +781,7 @@ namespace RHI::Vulkan
     {
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
         if (semaphore)
-            device->m_destroyQueue->Push(frame, semaphore);
+            device->m_destroyQueue.Push(frame, semaphore);
     }
 
     bool IFence::waitValue(IDevice* device, uint64_t value)
@@ -894,7 +811,7 @@ namespace RHI::Vulkan
         };
         VulkanResult result = vkCreateShaderModule(device->m_device, &shaderModuleCI, nullptr, &m_shaderModule);
         if (result == VK_SUCCESS && !getName().empty())
-            device->SetDebugName(m_shaderModule, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)m_shaderModule, getName());
         return result;
     }
 
@@ -909,7 +826,9 @@ namespace RHI::Vulkan
 
     ResultCode IPipelineLayout::Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo)
     {
-        TL::Vector<VkDescriptorSetLayout> descriptorSetLayouts{device->m_arena};
+        TL_ASSERT(createInfo.layouts.size() <= Limits::DescriptorSets, "Too many descriptor-set layouts in one pipeline layout");
+        TL_ASSERT(createInfo.pushConstants.size() <= Limits::PushConstantRanges, "Too many push-constant ranges");
+        TL::InlineVector<VkDescriptorSetLayout, Limits::DescriptorSets> descriptorSetLayouts;
         uint32_t index = 0;
         for (auto bindGroupLayout : createInfo.layouts)
         {
@@ -918,7 +837,7 @@ namespace RHI::Vulkan
             this->bindGroupLayouts[index++] = (IBindGroupLayout*)bindGroupLayout;
         }
 
-        TL::Vector<VkPushConstantRange> pushConstantRanges{device->m_arena};
+        TL::InlineVector<VkPushConstantRange, Limits::PushConstantRanges> pushConstantRanges;
         pushConstantStages = 0;
         for (auto range : createInfo.pushConstants)
         {
@@ -943,7 +862,7 @@ namespace RHI::Vulkan
         VulkanResult result = vkCreatePipelineLayout(device->m_device, &pipelineLayouCI, nullptr, &handle);
         if (result == VK_SUCCESS && !getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)handle, getName());
         }
         return result;
     }
@@ -977,14 +896,17 @@ namespace RHI::Vulkan
 
     ResultCode IGraphicsPipeline::Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo)
     {
-        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStageCIs{device->m_arena};
+        TL_ASSERT(createInfo.shaderStages.size() <= Limits::ShaderStages, "Too many graphics shader stages");
+        TL_ASSERT(createInfo.vertexBufferBindings.size() <= Limits::VertexBindings, "Too many vertex bindings");
+        TL_ASSERT(createInfo.renderTargetLayout.colors.size() <= Limits::ColorAttachments, "Too many color attachments");
+        TL::InlineVector<VkPipelineShaderStageCreateInfo, Limits::ShaderStages> shaderStageCIs;
         for (const auto& stage : createInfo.shaderStages)
         {
             shaderStageCIs.push_back(convertShaderStage(stage));
         }
 
-        TL::Vector<VkVertexInputBindingDescription> vertexBindings{device->m_arena};
-        TL::Vector<VkVertexInputAttributeDescription> vertexAttributes{device->m_arena};
+        TL::InlineVector<VkVertexInputBindingDescription, Limits::VertexBindings> vertexBindings;
+        TL::InlineVector<VkVertexInputAttributeDescription, Limits::VertexAttributes> vertexAttributes;
         for (const auto& bindingDesc : createInfo.vertexBufferBindings)
         {
             VkVertexInputBindingDescription binding{
@@ -994,6 +916,7 @@ namespace RHI::Vulkan
             };
             for (const auto& attributeDesc : bindingDesc.attributes)
             {
+                TL_ASSERT(vertexAttributes.size() + 1 <= Limits::VertexAttributes, "Too many vertex attributes");
                 VkVertexInputAttributeDescription attribute{
                     .location = (uint32_t)vertexAttributes.size(),
                     .binding = (uint32_t)vertexBindings.size(),
@@ -1092,15 +1015,13 @@ namespace RHI::Vulkan
             .pDynamicStates = dynamicStates,
         };
 
-        TL::Vector<VkFormat> colorAttachmentFormats{device->m_arena};
-        colorAttachmentFormats.reserve(createInfo.renderTargetLayout.colors.size());
+        TL::InlineVector<VkFormat, Limits::ColorAttachments> colorAttachmentFormats;
         for (auto format : createInfo.renderTargetLayout.colors)
         {
             colorAttachmentFormats.push_back(ConvertFormat(format));
         }
 
-        TL::Vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStates{device->m_arena};
-        pipelineColorBlendAttachmentStates.reserve(colorAttachmentFormats.size());
+        TL::InlineVector<VkPipelineColorBlendAttachmentState, Limits::ColorAttachments> pipelineColorBlendAttachmentStates;
 
         for (auto blendState : createInfo.colorBlendState.blendStates)
         {
@@ -1193,7 +1114,7 @@ namespace RHI::Vulkan
         TL_ASSERT(result, "vkCreateGraphicsPipelines failed with error: {}", result.AsString());
         if (result && !getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_PIPELINE, (uint64_t)handle, getName());
         }
         return result;
     }
@@ -1203,7 +1124,7 @@ namespace RHI::Vulkan
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame, handle);
+            device->m_destroyQueue.Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1227,7 +1148,7 @@ namespace RHI::Vulkan
 
         VulkanResult result = vkCreateComputePipelines(device->m_device, VK_NULL_HANDLE, 1, &computePipelineCI, nullptr, &handle);
         if (result == VK_SUCCESS && !getName().empty())
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_PIPELINE, (uint64_t)handle, getName());
         return result;
     }
 
@@ -1236,7 +1157,7 @@ namespace RHI::Vulkan
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame, handle);
+            device->m_destroyQueue.Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1258,15 +1179,15 @@ namespace RHI::Vulkan
     {
         this->layout = (IPipelineLayout*)createInfo.layout;
 
-        TL::Vector<VkPipelineShaderStageCreateInfo> shaderStagesCI{device->m_arena};
-        shaderStagesCI.reserve(createInfo.shaderStages.size());
+        TL_ASSERT(createInfo.shaderStages.size() <= Limits::ShaderStages, "Too many ray-tracing shader stages");
+        TL_ASSERT(createInfo.shaderGroups.size() <= Limits::AccelerationStructures, "Too many ray-tracing shader groups");
+        TL::InlineVector<VkPipelineShaderStageCreateInfo, Limits::ShaderStages> shaderStagesCI;
         for (const auto& stage : createInfo.shaderStages)
         {
             shaderStagesCI.push_back(convertShaderStage(stage));
         }
 
-        TL::Vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupsCI{device->m_arena};
-        shaderGroupsCI.reserve(createInfo.shaderGroups.size());
+        TL::InlineVector<VkRayTracingShaderGroupCreateInfoKHR, Limits::AccelerationStructures> shaderGroupsCI;
         for (const auto& groupInfo : createInfo.shaderGroups)
         {
             shaderGroupsCI.push_back({
@@ -1302,7 +1223,7 @@ namespace RHI::Vulkan
         if (result != VK_SUCCESS) return result;
 
         if (!getName().empty())
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_PIPELINE, (uint64_t)handle, getName());
 
         return ResultCode::Success;
     }
@@ -1312,7 +1233,7 @@ namespace RHI::Vulkan
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame, handle);
+            device->m_destroyQueue.Push(frame, handle);
     }
 
     void IRayTracingPipeline::GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle)
@@ -1355,7 +1276,7 @@ namespace RHI::Vulkan
         VulkanResult result;
         result = vkCreateQueryPool(device->m_device, &queryPoolCI, nullptr, &handle);
         if (result && !getName().empty())
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_QUERY_POOL, (uint64_t)handle, getName());
         return result;
     }
 
@@ -1364,7 +1285,7 @@ namespace RHI::Vulkan
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame, handle);
+            device->m_destroyQueue.Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1407,7 +1328,7 @@ namespace RHI::Vulkan
 
         if (!getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_BUFFER, (uint64_t)handle, getName());
             vmaSetAllocationName(device->m_deviceAllocator, allocation, getName().c_str());
         }
 
@@ -1429,10 +1350,10 @@ namespace RHI::Vulkan
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
         if (handle)
-            device->m_destroyQueue->Push(frame, handle);
+            device->m_destroyQueue.Push(frame, handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame, allocation);
+            device->m_destroyQueue.Push(frame, allocation);
     }
 
     DeviceMemoryPtr IBuffer::Map(IDevice* device)
@@ -1494,7 +1415,7 @@ namespace RHI::Vulkan
 
         if (result == VK_SUCCESS && !getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_IMAGE, (uint64_t)handle, getName());
             vmaSetAllocationName(device->m_deviceAllocator, allocation, getName().c_str());
         }
 
@@ -1538,7 +1459,7 @@ namespace RHI::Vulkan
         TL_ASSERT(result, "vkCreateImageView failed with error: {}", result.AsString());
 
         if (result == VK_SUCCESS && !getName().empty())
-            device->SetDebugName(viewHandle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)viewHandle, getName());
 
         this->size = createInfo.size;
         this->format = createInfo.format;
@@ -1573,14 +1494,14 @@ namespace RHI::Vulkan
     {
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
 
-        if (handle)
-            device->m_destroyQueue->Push(frame, handle);
-
         if (viewHandle)
-            device->m_destroyQueue->Push(frame, viewHandle);
+            device->m_destroyQueue.Push(frame, viewHandle);
+
+        if (handle)
+            device->m_destroyQueue.Push(frame, handle);
 
         if (allocation)
-            device->m_destroyQueue->Push(frame, allocation);
+            device->m_destroyQueue.Push(frame, allocation);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1589,12 +1510,11 @@ namespace RHI::Vulkan
 
     ResultCode IAccelerationStructure::Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo)
     {
-        ZoneScoped;
-
         VulkanResult result;
 
-        TL::Vector<VkAccelerationStructureGeometryKHR> geometries{device->m_arena};
-        TL::Vector<uint32_t> primitiveCounts{device->m_arena};
+        TL_ASSERT(createInfo.geometries.size() <= Limits::AccelerationGeometries, "Too many acceleration-structure geometries");
+        TL::InlineVector<VkAccelerationStructureGeometryKHR, Limits::AccelerationGeometries> geometries;
+        TL::InlineVector<uint32_t, Limits::AccelerationGeometries> primitiveCounts;
 
         if (createInfo.type == AccelerationStructureType::BottomLevel)
         {
@@ -1715,8 +1635,8 @@ namespace RHI::Vulkan
 
         if (!getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
-            device->SetDebugName(asBuffer, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, (uint64_t)handle, getName());
+            device->SetDebugName(VK_OBJECT_TYPE_BUFFER, (uint64_t)asBuffer, getName());
         }
 
         return ResultCode::Success;
@@ -1725,9 +1645,9 @@ namespace RHI::Vulkan
     void IAccelerationStructure::Shutdown(IDevice* device)
     {
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
-        if (handle) device->m_destroyQueue->Push(frame, handle);
-        if (buffer) device->m_destroyQueue->Push(frame, buffer);
-        if (allocation) device->m_destroyQueue->Push(frame, allocation);
+        if (handle) device->m_destroyQueue.Push(frame, handle);
+        if (buffer) device->m_destroyQueue.Push(frame, buffer);
+        if (allocation) device->m_destroyQueue.Push(frame, allocation);
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -1774,7 +1694,7 @@ namespace RHI::Vulkan
         VulkanResult result = vkCreateSampler(device->m_device, &samplerCI, nullptr, &handle);
         if (result == VK_SUCCESS && !getName().empty())
         {
-            device->SetDebugName(handle, getName().c_str());
+            device->SetDebugName(VK_OBJECT_TYPE_SAMPLER, (uint64_t)handle, getName());
         }
         return result;
     }
@@ -1782,7 +1702,7 @@ namespace RHI::Vulkan
     void ISampler::Shutdown(IDevice* device)
     {
         auto frame = (device->getQueue(QueueType::Graphics))->m_lastSubmitValue.load();
-        device->m_destroyQueue->Push(frame, handle);
+        device->m_destroyQueue.Push(frame, handle);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -1807,10 +1727,10 @@ namespace RHI::Vulkan
             TL_ASSERT(result, "Failed to create swapchain semaphore");
             result = vkCreateSemaphore(device->m_device, &semaphoreCI, nullptr, &m_presentSemaphore[i]);
             TL_ASSERT(result, "Failed to create swapchain semaphore");
-            if (!m_name.empty())
+            if (!getName().empty())
             {
-                device->SetDebugName(m_acquireSemaphore[i], "swapchain: {} - acquire[{}]", m_name, i);
-                device->SetDebugName(m_presentSemaphore[i], "swapchain: {} - present[{}]", m_name, i);
+                device->SetDebugName(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)m_acquireSemaphore[i], TL::fmt("swapchain: {} - acquire[{}]", getName(), i));
+                device->SetDebugName(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)m_presentSemaphore[i], TL::fmt("swapchain: {} - present[{}]", getName(), i));
             }
             // Wrap the binary acquire semaphore as a Fence handle so the render graph can
             // reference it without knowing Vulkan internals.
@@ -1827,12 +1747,12 @@ namespace RHI::Vulkan
         {
             if (m_acquireSemaphore[i])
             {
-                device->m_destroyQueue->Push(frame, m_acquireSemaphore[i]);
+                device->m_destroyQueue.Push(frame, m_acquireSemaphore[i]);
                 m_acquireSemaphore[i] = VK_NULL_HANDLE;
             }
             if (m_presentSemaphore[i])
             {
-                device->m_destroyQueue->Push(frame, m_presentSemaphore[i]);
+                device->m_destroyQueue.Push(frame, m_presentSemaphore[i]);
                 m_presentSemaphore[i] = VK_NULL_HANDLE;
             }
         }
@@ -1841,20 +1761,20 @@ namespace RHI::Vulkan
         {
             if (m_imageViews[i])
             {
-                device->m_destroyQueue->Push(frame, m_imageViews[i]);
+                device->m_destroyQueue.Push(frame, m_imageViews[i]);
                 m_imageViews[i] = VK_NULL_HANDLE;
             }
         }
 
         if (m_swapchain)
         {
-            device->m_destroyQueue->Push(frame, m_swapchain);
+            device->m_destroyQueue.Push(frame, m_swapchain);
             m_swapchain = VK_NULL_HANDLE;
         }
 
         if (m_surface)
         {
-            device->m_destroyQueue->Push(frame, m_surface);
+            device->m_destroyQueue.Push(frame, m_surface);
             m_surface = VK_NULL_HANDLE;
         }
 
@@ -1868,7 +1788,7 @@ namespace RHI::Vulkan
 
     uint32_t ISwapchain::GetImagesCount() const
     {
-        return m_configuration.imageCount;
+        return m_imageCount;
     }
 
     SurfaceCapabilities ISwapchain::GetSurfaceCapabilities(IDevice* device) const
@@ -1900,7 +1820,9 @@ namespace RHI::Vulkan
         {
             uint32_t formatCount{0};
             VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, nullptr));
-            TL::Vector<VkSurfaceFormatKHR> formats(formatCount);
+            TL_ASSERT(formatCount <= Limits::EnumerationEntries, "Too many Vulkan surface formats");
+            TL::InlineVector<VkSurfaceFormatKHR, Limits::EnumerationEntries> formats;
+            formats.resize(formatCount);
             VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, formats.data()));
             for (const auto& surfaceFormat : formats)
             {
@@ -1920,7 +1842,9 @@ namespace RHI::Vulkan
         {
             uint32_t presentModeCount{0};
             VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, nullptr));
-            TL::Vector<VkPresentModeKHR> presentModes(presentModeCount);
+            TL_ASSERT(presentModeCount <= Limits::EnumerationEntries, "Too many Vulkan present modes");
+            TL::InlineVector<VkPresentModeKHR, Limits::EnumerationEntries> presentModes;
+            presentModes.resize(presentModeCount);
             VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device->m_physicalDevice, m_surface, &presentModeCount, presentModes.data()));
             for (VkPresentModeKHR mode : presentModes)
             {
@@ -1979,7 +1903,8 @@ namespace RHI::Vulkan
         }
 
         // Clamp image count to supported range
-        uint32_t imageCount = std::clamp(configInfo.imageCount, surfaceCaps.minImageCount, surfaceCaps.maxImageCount);
+        const uint32_t maxImageCount = surfaceCaps.maxImageCount == 0 ? uint32_t(MaxImageCount) : (std::min)(surfaceCaps.maxImageCount, uint32_t(MaxImageCount));
+        uint32_t imageCount = std::clamp(configInfo.imageCount, surfaceCaps.minImageCount, maxImageCount);
         if (imageCount != configInfo.imageCount)
         {
             TL::LogWarn(
@@ -1989,6 +1914,8 @@ namespace RHI::Vulkan
                 surfaceCaps.minImageCount,
                 surfaceCaps.maxImageCount);
         }
+        m_configuration.imageCount = imageCount;
+        m_configuration.size = {extent.width, extent.height};
 
         // Select surface format
         VkSurfaceFormatKHR surfaceFormat{};
@@ -1997,7 +1924,9 @@ namespace RHI::Vulkan
             result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, nullptr);
             TL_ASSERT(result);
 
-            TL::Vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+            TL_ASSERT(formatCount <= Limits::EnumerationEntries, "Too many Vulkan surface formats");
+            TL::InlineVector<VkSurfaceFormatKHR, Limits::EnumerationEntries> surfaceFormats;
+            surfaceFormats.resize(formatCount);
             result = vkGetPhysicalDeviceSurfaceFormatsKHR(device->m_physicalDevice, m_surface, &formatCount, surfaceFormats.data());
             TL_ASSERT(result);
 
@@ -2038,8 +1967,8 @@ namespace RHI::Vulkan
         result = vkCreateSwapchainKHR(device->m_device, &createInfo, nullptr, &m_swapchain);
         TL_ASSERT(result);
 
-        if (m_name.empty() == false)
-            device->SetDebugName(m_swapchain, m_name.c_str());
+        if (!getName().empty())
+            device->SetDebugName(VK_OBJECT_TYPE_SWAPCHAIN_KHR, (uint64_t)m_swapchain, getName());
 
         // Destroy old image views and old swapchain if present
         {
@@ -2048,14 +1977,14 @@ namespace RHI::Vulkan
             {
                 if (m_imageViews[i] != VK_NULL_HANDLE)
                 {
-                    device->m_destroyQueue->Push(frame, m_imageViews[i]);
+                    device->m_destroyQueue.Push(frame, m_imageViews[i]);
                     m_imageViews[i] = VK_NULL_HANDLE;
                 }
             }
 
             if (createInfo.oldSwapchain)
             {
-                device->m_destroyQueue->Push(frame, createInfo.oldSwapchain);
+                device->m_destroyQueue.Push(frame, createInfo.oldSwapchain);
             }
         }
 
@@ -2079,20 +2008,25 @@ namespace RHI::Vulkan
             };
             result = vkCreateImageView(device->m_device, &imageViewCI, nullptr, &m_imageViews[i]);
             TL_ASSERT(result, "Failed to create swapchain image view");
-            if (m_name.empty() == false)
+            if (!getName().empty())
             {
-                device->SetDebugName(m_images[i], "swapchain: {} - image [{}]", m_name, i);
-                device->SetDebugName(m_imageViews[i], "swapchain: {} - view [{}]", m_name, i);
+                device->SetDebugName(VK_OBJECT_TYPE_IMAGE, (uint64_t)m_images[i], TL::fmt("swapchain: {} - image [{}]", getName(), i));
+                device->SetDebugName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)m_imageViews[i], TL::fmt("swapchain: {} - view [{}]", getName(), i));
             }
         }
 
-        AcquireNextImage(device);
-
+        m_imageAcquired = false;
         return result;
     }
 
-    SwapchainAcquireResult ISwapchain::AcquireSwapchainImage()
+    SwapchainAcquireResult ISwapchain::AcquireSwapchainImage(IDevice* device)
     {
+        if (!m_imageAcquired)
+        {
+            VulkanResult result = AcquireNextImage(device);
+            if (!result.IsSwapchainSuccess())
+                return {};
+        }
         return {m_imageHandle, &m_acquireFences[m_currentAcquireIndex]};
     }
 
@@ -2129,15 +2063,16 @@ namespace RHI::Vulkan
         {
             updateCurrentImage();
             m_acquireSemaphoreIndex = (m_acquireSemaphoreIndex + 1) % MaxImageCount;
+            m_imageAcquired = true;
         }
         else if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             TL::LogWarn("Swapchain is out of date, attempting to reconfigure (result: {})", result.AsString());
             // ConfigureSwapchain() internally calls AcquireNextImage(), so the image is
-            // already acquired when it returns — do not acquire again.
+            // already acquired when it returns â€” do not acquire again.
             if (ConfigureSwapchain(device, m_configuration) == ResultCode::Success)
             {
-                result = VK_SUCCESS;
+                result = AcquireNextImage(device);
             }
             else
             {
@@ -2154,7 +2089,8 @@ namespace RHI::Vulkan
 
     VkResult ISwapchain::Present(IDevice* device, TL::Span<Fence* const> fences)
     {
-        TL::Vector<VkSemaphore> waitSemaphores{device->m_arena};
+        TL_ASSERT(fences.size() <= Limits::QueueFences, "Too many present wait fences");
+        TL::InlineVector<VkSemaphore, Limits::QueueFences> waitSemaphores;
         for (auto& _fence : fences)
         {
             auto fence = (IFence*)_fence;

@@ -3,21 +3,23 @@
 #include <RHI/RHI.h>
 
 #include <TL/Allocator/Arena.hpp>
-#include <TL/Containers/Vector.hpp>
+#include <TL/Containers/InlineVector.hpp>
 
 #include <vulkan/vulkan.h>
 
 namespace RHI::Vulkan
 {
     struct IDevice;
+    struct IQueue;
     struct ICommandList;
 
     struct ICommandPool : RHI::CommandPool
     {
         TL::Arena arena;
         IDevice* device;
+        IQueue* queue;
         VkCommandPool commandPool;
-        TL::Vector<ICommandList*> commandList;
+        TL::InlineVector<ICommandList*, 64> commandList;
 
         ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
         void Shutdown(IDevice* device);
@@ -26,7 +28,9 @@ namespace RHI::Vulkan
     struct ICommandList : RHI::CommandList
     {
         IDevice* device = nullptr;
+        ICommandPool* commandPool = nullptr;
         VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        TL::InlineVector<void*, 64> tracyScopes;
         PipelineLayout* pipelineLayout = nullptr;
         VkPipelineBindPoint pipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
         bool hasVertexBuffer         : 1;

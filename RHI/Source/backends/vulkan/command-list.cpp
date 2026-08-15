@@ -3,11 +3,13 @@
 #include "device.h"
 #include "resources.h"
 
-#include <TL/Containers/Optional.hpp>
+#include <tracy/TracyVulkan.hpp>
+
+#include <TL/Containers/InlineVector.hpp>
 
 #include <algorithm>
-
-#include <tracy/Tracy.hpp>
+#include <cstring>
+#include <optional>
 
 namespace RHI::Vulkan
 {
@@ -242,6 +244,7 @@ namespace RHI::Vulkan
     {
         this->device = device;
         IQueue* queue = device->getQueue(createInfo.queue);
+        this->queue = queue;
 
         VkCommandPoolCreateInfo poolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -252,7 +255,7 @@ namespace RHI::Vulkan
 
         VulkanResult result = vkCreateCommandPool(device->m_device, &poolInfo, nullptr, &commandPool);
         if (result && createInfo.name)
-            device->SetDebugName(commandPool, createInfo.name);
+            device->SetDebugName(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)commandPool, createInfo.name);
         return result;
     }
 
@@ -269,6 +272,7 @@ namespace RHI::Vulkan
 
     CommandList* commandPoolAllocate(ICommandPool* self)
     {
+        TL_ASSERT(self->commandList.size() + 1 <= Limits::CommandListsPerPool, "Command-pool command-list capacity exceeded");
         VkCommandBufferAllocateInfo allocateInfo = {
             VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             nullptr,
@@ -278,6 +282,7 @@ namespace RHI::Vulkan
         };
         ICommandList* commandList = TL::constructFrom<ICommandList>(&self->arena);
         commandList->device = self->device;
+        commandList->commandPool = self;
         VK_CHECK(vkAllocateCommandBuffers(self->device->m_device, &allocateInfo, &commandList->commandBuffer));
         return commandList;
     }
@@ -288,7 +293,7 @@ namespace RHI::Vulkan
 
     void cmdBegin(ICommandList* self)
     {
-        ZoneScoped;
+        TL_ASSERT(self->tracyScopes.empty(), "Command list began with unclosed debug markers");
 
         VkCommandBufferBeginInfo beginInfo{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -297,18 +302,49 @@ namespace RHI::Vulkan
             .pInheritanceInfo = nullptr,
         };
         vkBeginCommandBuffer(self->commandBuffer, &beginInfo);
+#if defined(TRACY_ENABLE)
+        if (auto tracyContext = static_cast<TracyVkCtx>(self->commandPool->queue->m_tracyContext))
+        {
+            const std::lock_guard lock(self->commandPool->queue->m_tracyCollectMutex);
+            TracyVkCollect(tracyContext, self->commandBuffer);
+        }
+#endif
     }
 
     void cmdEnd(ICommandList* self)
     {
-        ZoneScoped;
+
+        TL_ASSERT(self->tracyScopes.empty(), "Command list ended with unclosed debug markers");
+#if defined(TRACY_ENABLE)
+        while (!self->tracyScopes.empty())
+        {
+            static_cast<tracy::VkCtxScope*>(self->tracyScopes.back())->~VkCtxScope();
+            self->tracyScopes.pop_back();
+        }
+#endif
 
         vkEndCommandBuffer(self->commandBuffer);
     }
 
     void cmdPushDebugMarker(ICommandList* self, TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
     {
-        ZoneScoped;
+
+#if defined(TRACY_ENABLE)
+        if (auto tracyContext = static_cast<TracyVkCtx>(self->commandPool->queue->m_tracyContext))
+        {
+            TL_ASSERT(self->tracyScopes.size() + 1 <= self->tracyScopes.capacity(), "Command-list debug-marker nesting exceeded Tracy scope capacity");
+            auto* scope = TL::constructFrom<tracy::VkCtxScope>(
+                &self->commandPool->arena,
+                tracyContext,
+                __LINE__,
+                __FILE__, sizeof(__FILE__) - 1,
+                __func__, std::strlen(__func__),
+                name, std::strlen(name),
+                self->commandBuffer,
+                true);
+            self->tracyScopes.push_back(scope);
+        }
+#endif
 
 #if RHI_DEBUG
         if (auto fn = vkCmdBeginDebugUtilsLabelEXT)
@@ -321,15 +357,27 @@ namespace RHI::Vulkan
 
     void cmdPopDebugMarker(ICommandList* self)
     {
+#if defined(TRACY_ENABLE)
+        if (self->commandPool->queue->m_tracyContext)
+        {
+            TL_ASSERT(!self->tracyScopes.empty(), "Debug-marker pop has no matching push");
+            if (!self->tracyScopes.empty())
+            {
+                static_cast<tracy::VkCtxScope*>(self->tracyScopes.back())->~VkCtxScope();
+                self->tracyScopes.pop_back();
+            }
+        }
+#endif
+#if RHI_DEBUG
         if (auto fn = vkCmdEndDebugUtilsLabelEXT)
         {
             fn(self->commandBuffer);
         }
+#endif
     }
 
     void cmdInsertDebugMarker(ICommandList* self, TL_MAYBE_UNUSED const char* name, TL_MAYBE_UNUSED uint32_t bgra)
     {
-        ZoneScoped;
 
 #if RHI_DEBUG
         if (auto fn = vkCmdInsertDebugUtilsLabelEXT)
@@ -342,17 +390,16 @@ namespace RHI::Vulkan
 
     void cmdAddPipelineBarrier(ICommandList* self, TL::Span<const BarrierInfo> barriers, TL::Span<const ImageBarrierInfo> imageBarriers, TL::Span<const BufferBarrierInfo> bufferBarriers)
     {
-        ZoneScoped;
 
         if (barriers.empty() && imageBarriers.empty() && bufferBarriers.empty())
             return;
 
-        TL::Vector<VkMemoryBarrier2> vmemoryBarriers{self->device->m_arena};
-        TL::Vector<VkBufferMemoryBarrier2> vbufferBarriers{self->device->m_arena};
-        TL::Vector<VkImageMemoryBarrier2> vimageBarriers{self->device->m_arena};
-        vmemoryBarriers.reserve(barriers.size());
-        vbufferBarriers.reserve(bufferBarriers.size());
-        vimageBarriers.reserve(imageBarriers.size());
+        TL_ASSERT(barriers.size() <= Limits::BarrierBatch, "Too many memory barriers in one command");
+        TL_ASSERT(bufferBarriers.size() <= Limits::BarrierBatch, "Too many buffer barriers in one command");
+        TL_ASSERT(imageBarriers.size() <= Limits::BarrierBatch, "Too many image barriers in one command");
+        TL::InlineVector<VkMemoryBarrier2, Limits::BarrierBatch> vmemoryBarriers;
+        TL::InlineVector<VkBufferMemoryBarrier2, Limits::BarrierBatch> vbufferBarriers;
+        TL::InlineVector<VkImageMemoryBarrier2, Limits::BarrierBatch> vimageBarriers;
 
         for (auto barrier : barriers)
         {
@@ -437,11 +484,11 @@ namespace RHI::Vulkan
 
     void cmdBeginRenderPass(ICommandList* self, const RenderPassBeginInfo& beginInfo)
     {
-        ZoneScoped;
 
-        TL::Vector<VkRenderingAttachmentInfo> colorAttachments{self->device->m_arena};
-        TL::Optional<VkRenderingAttachmentInfo> depthAttachment{};
-        TL::Optional<VkRenderingAttachmentInfo> stencilAttachment{};
+        TL_ASSERT(beginInfo.colorAttachments.size() <= Limits::ColorAttachments, "Too many color attachments");
+        TL::InlineVector<VkRenderingAttachmentInfo, Limits::ColorAttachments> colorAttachments;
+        std::optional<VkRenderingAttachmentInfo> depthAttachment{};
+        std::optional<VkRenderingAttachmentInfo> stencilAttachment{};
 
         for (const auto& colorAttachment : beginInfo.colorAttachments)
         {
@@ -522,7 +569,6 @@ namespace RHI::Vulkan
 
     void cmdEndRenderPass(ICommandList* self)
     {
-        ZoneScoped;
         vkCmdEndRendering(self->commandBuffer);
     }
 
@@ -538,7 +584,6 @@ namespace RHI::Vulkan
 
     void cmdBeginConditionalCommands(ICommandList* self, const BufferBindingInfo& conditionBuffer, bool inverted)
     {
-        ZoneScoped;
 
         auto buffer = (IBuffer*)(conditionBuffer.buffer);
 
@@ -554,17 +599,15 @@ namespace RHI::Vulkan
 
     void cmdEndConditionalCommands(ICommandList* self)
     {
-        ZoneScoped;
 
         vkCmdEndConditionalRenderingEXT(self->commandBuffer);
     }
 
     void cmdExecute(ICommandList* self, TL::Span<const CommandList*> commandLists)
     {
-        ZoneScoped;
 
-        TL::Vector<VkCommandBuffer> commandBuffers{self->device->m_arena};
-        commandBuffers.reserve(commandLists.size());
+        TL_ASSERT(commandLists.size() <= Limits::CommandBatch, "Too many secondary command buffers in one Execute call");
+        TL::InlineVector<VkCommandBuffer, Limits::CommandBatch> commandBuffers;
 
         for (const auto* commandList : commandLists)
         {
@@ -577,7 +620,6 @@ namespace RHI::Vulkan
 
     void cmdBindPipelineLayout(ICommandList* self, BindPoint bindPoint, const PipelineLayout* pipelineLayout)
     {
-        ZoneScoped;
 
         self->pipelineLayout = (PipelineLayout*)pipelineLayout;
         self->pipelineBindPoint = bindPoint == BindPoint::Graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
@@ -585,7 +627,6 @@ namespace RHI::Vulkan
 
     void cmdSetPushConstants(ICommandList* self, TL_MAYBE_UNUSED BindPoint bindPoint, uint32_t offset, TL::Block content)
     {
-        ZoneScoped;
 
         IPipelineLayout* pipelineLayout = (IPipelineLayout*)self->pipelineLayout;
 
@@ -594,54 +635,161 @@ namespace RHI::Vulkan
 
     void cmdPushBindGroup(ICommandList* self, BindPoint bindPoint, uint32_t firstGroup, TL::Span<const BindGroupUpdateInfo> updateInfos)
     {
-        ZoneScoped;
 
-        IPipelineLayout* pipelineLayout = (IPipelineLayout*)self->pipelineLayout;
-        IBindGroupLayout* groupLayout = pipelineLayout->bindGroupLayouts[firstGroup];
-        DescriptorSetWriter writer{self->device, VK_NULL_HANDLE, groupLayout, self->device->m_arena};
-        for (const auto& updateInfo : updateInfos)
+        IPipelineLayout*  pipelineLayout = (IPipelineLayout*)self->pipelineLayout;
+        IBindGroupLayout* groupLayout    = pipelineLayout->bindGroupLayouts[firstGroup];
+
+        // Descriptors are pushed in fixed-size batches out of stack storage, one push per batch.
+        for (const BindGroupUpdateInfo& updateInfo : updateInfos)
         {
-            for (auto [dstBindings, dstArrayelements, buffers] : updateInfo.buffers)
+            for (const BindGroupBuffersUpdateInfo& update : updateInfo.buffers)
             {
-                writer.BindBuffers(dstBindings, dstArrayelements, buffers);
+                const VkDescriptorType descriptorType = ConvertDescriptorType(groupLayout->GetBinding(update.dstBinding).type);
+                for (size_t first = 0; first < update.buffers.size(); first += Limits::DescriptorBatch)
+                {
+                    const size_t           count = (std::min)(Limits::DescriptorBatch, update.buffers.size() - first);
+                    VkDescriptorBufferInfo infos[Limits::DescriptorBatch];
+                    for (size_t i = 0; i < count; ++i)
+                    {
+                        const BufferBindingInfo& binding = update.buffers[first + i];
+                        const auto*              buffer  = static_cast<const IBuffer*>(binding.buffer);
+                        infos[i] = {
+                            .buffer = buffer->handle,
+                            .offset = binding.offset,
+                            .range  = binding.range == RemainingSize ? VK_WHOLE_SIZE : binding.range,
+                        };
+                    }
+                    const VkWriteDescriptorSet write{
+                        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstBinding      = update.dstBinding,
+                        .dstArrayElement = update.dstArrayElement + static_cast<uint32_t>(first),
+                        .descriptorCount = static_cast<uint32_t>(count),
+                        .descriptorType  = descriptorType,
+                        .pBufferInfo     = infos,
+                    };
+                    const VkPushDescriptorSetInfo pushInfo{
+                        .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
+                        .stageFlags           = VK_SHADER_STAGE_ALL,
+                        .layout               = pipelineLayout->handle,
+                        .set                  = firstGroup,
+                        .descriptorWriteCount = 1,
+                        .pDescriptorWrites    = &write,
+                    };
+                    vkCmdPushDescriptorSet2KHR(self->commandBuffer, &pushInfo);
+                }
             }
 
-            for (auto [dstBindings, dstArrayelements, images] : updateInfo.images)
+            for (const BindGroupImagesUpdateInfo& update : updateInfo.images)
             {
-                writer.BindImages(dstBindings, dstArrayelements, images);
+                const bool storage = groupLayout->GetBinding(update.dstBinding).type == BindingType::StorageImage;
+                for (size_t first = 0; first < update.images.size(); first += Limits::DescriptorBatch)
+                {
+                    const size_t          count = (std::min)(Limits::DescriptorBatch, update.images.size() - first);
+                    VkDescriptorImageInfo infos[Limits::DescriptorBatch];
+                    for (size_t i = 0; i < count; ++i)
+                    {
+                        const auto* image = static_cast<const IImage*>(update.images[first + i]);
+                        infos[i] = {
+                            .sampler     = VK_NULL_HANDLE,
+                            .imageView   = image->viewHandle,
+                            .imageLayout = storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        };
+                    }
+                    const VkWriteDescriptorSet write{
+                        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstBinding      = update.dstBinding,
+                        .dstArrayElement = update.dstArrayElement + static_cast<uint32_t>(first),
+                        .descriptorCount = static_cast<uint32_t>(count),
+                        .descriptorType  = storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                        .pImageInfo      = infos,
+                    };
+                    const VkPushDescriptorSetInfo pushInfo{
+                        .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
+                        .stageFlags           = VK_SHADER_STAGE_ALL,
+                        .layout               = pipelineLayout->handle,
+                        .set                  = firstGroup,
+                        .descriptorWriteCount = 1,
+                        .pDescriptorWrites    = &write,
+                    };
+                    vkCmdPushDescriptorSet2KHR(self->commandBuffer, &pushInfo);
+                }
             }
 
-            for (auto [dstBindings, dstArrayelements, samplers] : updateInfo.samplers)
+            for (const BindGroupSamplersUpdateInfo& update : updateInfo.samplers)
             {
-                writer.BindSamplers(dstBindings, dstArrayelements, samplers);
+                for (size_t first = 0; first < update.samplers.size(); first += Limits::DescriptorBatch)
+                {
+                    const size_t          count = (std::min)(Limits::DescriptorBatch, update.samplers.size() - first);
+                    VkDescriptorImageInfo infos[Limits::DescriptorBatch];
+                    for (size_t i = 0; i < count; ++i)
+                    {
+                        const auto* sampler = static_cast<const ISampler*>(update.samplers[first + i]);
+                        infos[i]            = {.sampler = sampler->handle};
+                    }
+                    const VkWriteDescriptorSet write{
+                        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstBinding      = update.dstBinding,
+                        .dstArrayElement = update.dstArrayElement + static_cast<uint32_t>(first),
+                        .descriptorCount = static_cast<uint32_t>(count),
+                        .descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER,
+                        .pImageInfo      = infos,
+                    };
+                    const VkPushDescriptorSetInfo pushInfo{
+                        .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
+                        .stageFlags           = VK_SHADER_STAGE_ALL,
+                        .layout               = pipelineLayout->handle,
+                        .set                  = firstGroup,
+                        .descriptorWriteCount = 1,
+                        .pDescriptorWrites    = &write,
+                    };
+                    vkCmdPushDescriptorSet2KHR(self->commandBuffer, &pushInfo);
+                }
             }
 
-            for (auto [dstBinding, dstArrayElement, accelerationStructure] : updateInfo.accelerationStructures)
+            for (const BindGroupAccelerationStructureBindingInfo& update : updateInfo.accelerationStructures)
             {
-                writer.BindAccelerationStructures(dstBinding, dstArrayElement, {&accelerationStructure, 1});
+                const VkAccelerationStructureKHR handle = static_cast<const IAccelerationStructure*>(update.accelerationStructure)->handle;
+
+                const VkWriteDescriptorSetAccelerationStructureKHR accelerationInfo{
+                    .sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                    .accelerationStructureCount = 1,
+                    .pAccelerationStructures    = &handle,
+                };
+                const VkWriteDescriptorSet write{
+                    .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .pNext           = &accelerationInfo,
+                    .dstBinding      = update.dstBinding,
+                    .dstArrayElement = update.dstArrayElement,
+                    .descriptorCount = 1,
+                    .descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                };
+                const VkPushDescriptorSetInfo pushInfo{
+                    .sType                = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
+                    .stageFlags           = VK_SHADER_STAGE_ALL,
+                    .layout               = pipelineLayout->handle,
+                    .set                  = firstGroup,
+                    .descriptorWriteCount = 1,
+                    .pDescriptorWrites    = &write,
+                };
+                vkCmdPushDescriptorSet2KHR(self->commandBuffer, &pushInfo);
             }
         }
-        VkPushDescriptorSetInfo pushDescriptorSetInfo{
-            .sType = VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR,
-            .pNext = nullptr,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-            .layout = pipelineLayout->handle,
-            .set = firstGroup,
-            .descriptorWriteCount = (uint32_t)writer.GetWrites().size(),
-            .pDescriptorWrites = writer.GetWrites().data(),
-        };
-        vkCmdPushDescriptorSet2KHR(self->commandBuffer, &pushDescriptorSetInfo);
     }
 
     void cmdSetBindGroups(ICommandList* self, BindPoint bindPoint, TL::Span<const BindGroupBindingInfo> bindGroups)
     {
-        ZoneScoped;
 
         IPipelineLayout* pipelineLayout = (IPipelineLayout*)self->pipelineLayout;
         VkPipelineBindPoint vkBindPoint = ConvertBindPoint(bindPoint);
 
-        TL::Vector<VkDescriptorSet> descriptorSets{self->device->m_arena};
-        TL::Vector<uint32_t> dynamicOffsets{self->device->m_arena};
+        TL_ASSERT(bindGroups.size() <= Limits::DescriptorSets, "Too many descriptor sets in one bind");
+        size_t dynamicOffsetCount = 0;
+        for (const auto& bindingInfo : bindGroups)
+            dynamicOffsetCount += bindingInfo.dynamicOffsets.size();
+        TL_ASSERT(dynamicOffsetCount <= Limits::DescriptorBatch, "Too many dynamic descriptor offsets in one bind");
+
+        TL::InlineVector<VkDescriptorSet, Limits::DescriptorSets> descriptorSets;
+        TL::InlineVector<uint32_t, Limits::DescriptorBatch> dynamicOffsets;
 
         for (const auto& bindingInfo : bindGroups)
         {
@@ -658,7 +806,6 @@ namespace RHI::Vulkan
 
     void cmdBindGraphicsPipeline(ICommandList* self, const GraphicsPipeline* pipelineState)
     {
-        ZoneScoped;
 
         if (pipelineState == nullptr)
         {
@@ -677,7 +824,6 @@ namespace RHI::Vulkan
 
     void cmdBindComputePipeline(ICommandList* self, const ComputePipeline* pipelineState)
     {
-        ZoneScoped;
 
         if (pipelineState == nullptr)
         {
@@ -696,7 +842,6 @@ namespace RHI::Vulkan
 
     void cmdBindRayTracingPipeline(ICommandList* self, const RayTracingPipeline* pipelineState)
     {
-        ZoneScoped;
 
         if (pipelineState == nullptr)
             return;
@@ -710,7 +855,6 @@ namespace RHI::Vulkan
 
     void cmdSetViewport(ICommandList* self, float offsetX, float offsetY, float width, float height, float minDepth, float maxDepth)
     {
-        ZoneScoped;
         // Flip the viewport so Vulkan NDC is consitant with other APIs
         VkViewport vkViewport{
             .x = offsetX,
@@ -726,7 +870,6 @@ namespace RHI::Vulkan
 
     void cmdSetScissor(ICommandList* self, int32_t offsetX, int32_t offsetY, uint32_t width, uint32_t height)
     {
-        ZoneScoped;
 
         VkRect2D vkScissor{
             .offset = {offsetX, offsetY},
@@ -738,7 +881,6 @@ namespace RHI::Vulkan
 
     void cmdBindVertexBuffers(ICommandList* self, uint32_t firstBinding, TL::Span<const BufferBindingInfo> vertexBuffers)
     {
-        ZoneScoped;
 
         constexpr size_t MaxVertexBuffers = 16;
 
@@ -763,7 +905,6 @@ namespace RHI::Vulkan
 
     void cmdBindIndexBuffer(ICommandList* self, const BufferBindingInfo& indexBuffer, IndexType indexType)
     {
-        ZoneScoped;
 
         auto buffer = (IBuffer*)(indexBuffer.buffer);
         vkCmdBindIndexBuffer(self->commandBuffer, buffer->handle, indexBuffer.offset, indexType == IndexType::uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
@@ -772,7 +913,6 @@ namespace RHI::Vulkan
 
     void cmdDraw(ICommandList* self, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
-        ZoneScoped;
 
         TL_ASSERT(self->isGraphicsPipelineBound && self->hasViewportSet);
         vkCmdDraw(self->commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
@@ -780,7 +920,6 @@ namespace RHI::Vulkan
 
     void cmdDrawIndexed(ICommandList* self, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
     {
-        ZoneScoped;
 
         TL_ASSERT(self->isGraphicsPipelineBound && self->hasViewportSet && self->hasScissorSet);
         vkCmdDrawIndexed(self->commandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
@@ -793,7 +932,6 @@ namespace RHI::Vulkan
 
     void cmdDrawIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
-        ZoneScoped;
 
         TL_ASSERT(self->isGraphicsPipelineBound && self->hasViewportSet && self->hasScissorSet);
         auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
@@ -811,7 +949,6 @@ namespace RHI::Vulkan
 
     void cmdDrawIndexedIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer, const BufferBindingInfo& countBuffer, uint32_t maxDrawCount, uint32_t stride)
     {
-        ZoneScoped;
 
         TL_ASSERT(self->isGraphicsPipelineBound && self->hasViewportSet && self->hasScissorSet && self->hasVertexBuffer && self->hasIndexBuffer);
         auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
@@ -852,7 +989,6 @@ namespace RHI::Vulkan
 
     void cmdDispatch(ICommandList* self, uint32_t x, uint32_t y, uint32_t z)
     {
-        ZoneScoped;
 
         TL_ASSERT(self->isComputePipelineBound);
         vkCmdDispatch(self->commandBuffer, x, y, z);
@@ -860,7 +996,6 @@ namespace RHI::Vulkan
 
     void cmdDispatchIndirect(ICommandList* self, const BufferBindingInfo& argumentBuffer)
     {
-        ZoneScoped;
 
         TL_ASSERT(self->isComputePipelineBound);
         auto cmdBuffer = (IBuffer*)(argumentBuffer.buffer);
@@ -885,7 +1020,6 @@ namespace RHI::Vulkan
 
     void cmdCopyBuffer(ICommandList* self, const Buffer* srcBuffer, uint64_t srcOffset, const Buffer* dstBuffer, uint64_t dstOffset, uint64_t size)
     {
-        ZoneScoped;
 
         auto src = (const IBuffer*)(srcBuffer);
         auto dst = (const IBuffer*)(dstBuffer);
@@ -900,7 +1034,6 @@ namespace RHI::Vulkan
 
     void cmdCopyImage(ICommandList* self, const ImageCopyInfo& srcImage, const ImageCopyInfo& dstImage, const ImageSize3D& size)
     {
-        ZoneScoped;
 
         auto src = (const IImage*)(srcImage.image);
         auto dst = (const IImage*)(dstImage.image);
@@ -917,7 +1050,6 @@ namespace RHI::Vulkan
 
     void cmdCopyImageToBuffer(ICommandList* self, const ImageCopyInfo& srcImage, const ImageMemoryLayout& layout, const Buffer* dstBuffer)
     {
-        ZoneScoped;
 
         auto image = (const IImage*)(srcImage.image);
         auto buffer = (const IBuffer*)(dstBuffer);
@@ -942,7 +1074,6 @@ namespace RHI::Vulkan
 
     void cmdCopyBufferToImage(ICommandList* self, const Buffer* srcBuffer, const ImageCopyInfo& dstImage, const ImageMemoryLayout& layout)
     {
-        ZoneScoped;
 
         auto buffer = (const IBuffer*)(srcBuffer);
         auto image = (const IImage*)(dstImage.image);
@@ -975,12 +1106,12 @@ namespace RHI::Vulkan
 
     void cmdBuildTlas(ICommandList* self, TL::Span<const TlasBuildInfo> buildInfos)
     {
-        ZoneScoped;
 
-        TL::Vector<VkAccelerationStructureGeometryKHR> geometries{self->device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> geometryInfos{self->device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR> rangeInfos{self->device->m_arena};
-        TL::Vector<const VkAccelerationStructureBuildRangeInfoKHR*> pRangeInfos{self->device->m_arena};
+        TL_ASSERT(buildInfos.size() <= Limits::AccelerationStructures, "Too many TLAS builds in one command");
+        TL::InlineVector<VkAccelerationStructureGeometryKHR, Limits::AccelerationStructures> geometries;
+        TL::InlineVector<VkAccelerationStructureBuildGeometryInfoKHR, Limits::AccelerationStructures> geometryInfos;
+        TL::InlineVector<VkAccelerationStructureBuildRangeInfoKHR, Limits::AccelerationStructures> rangeInfos;
+        TL::InlineVector<const VkAccelerationStructureBuildRangeInfoKHR*, Limits::AccelerationStructures> pRangeInfos;
 
         geometries.resize(buildInfos.size());
         geometryInfos.resize(buildInfos.size());
@@ -1038,16 +1169,17 @@ namespace RHI::Vulkan
 
     void cmdBuildBlas(ICommandList* self, TL::Span<const BlasBuildInfo> buildInfos)
     {
-        ZoneScoped;
 
-        TL::Vector<VkAccelerationStructureGeometryKHR> geometries{self->device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildRangeInfoKHR> rangeInfos{self->device->m_arena};
-        TL::Vector<VkAccelerationStructureBuildGeometryInfoKHR> geometryInfos{self->device->m_arena};
-        TL::Vector<const VkAccelerationStructureBuildRangeInfoKHR*> pRangeInfos{self->device->m_arena};
+        TL_ASSERT(buildInfos.size() <= Limits::AccelerationStructures, "Too many BLAS builds in one command");
+        TL::InlineVector<VkAccelerationStructureGeometryKHR, Limits::AccelerationGeometries> geometries;
+        TL::InlineVector<VkAccelerationStructureBuildRangeInfoKHR, Limits::AccelerationGeometries> rangeInfos;
+        TL::InlineVector<VkAccelerationStructureBuildGeometryInfoKHR, Limits::AccelerationStructures> geometryInfos;
+        TL::InlineVector<const VkAccelerationStructureBuildRangeInfoKHR*, Limits::AccelerationStructures> pRangeInfos;
 
         uint32_t totalGeometries = 0;
         for (const auto& info : buildInfos)
             totalGeometries += (uint32_t)info.geometries.size();
+        TL_ASSERT(totalGeometries <= Limits::AccelerationGeometries, "Too many BLAS geometries in one command");
 
         geometries.reserve(totalGeometries);
         rangeInfos.reserve(totalGeometries);
@@ -1115,8 +1247,8 @@ namespace RHI::Vulkan
     void cmdWriteAccelerationStructuresSizes(ICommandList* self, TL::Span<const AccelerationStructure*> accelerationStructures, QueryPool* _queryPool, uint32_t queryPoolOffset)
     {
         IQueryPool* queryPool = (IQueryPool*)_queryPool;
-        TL::Vector<VkAccelerationStructureKHR> asHandles{self->device->m_arena};
-        asHandles.reserve(accelerationStructures.size());
+        TL_ASSERT(accelerationStructures.size() <= Limits::AccelerationStructures, "Too many acceleration structures in one query command");
+        TL::InlineVector<VkAccelerationStructureKHR, Limits::AccelerationStructures> asHandles;
         for (const auto* as : accelerationStructures)
         {
             auto vkAS = (IAccelerationStructure*)as;
@@ -1128,8 +1260,8 @@ namespace RHI::Vulkan
     void cmdWriteMicromapsSizes(ICommandList* self, TL::Span<const Micromap*> micromaps, QueryPool* _queryPool, uint32_t queryPoolOffset)
     {
         IQueryPool* queryPool = (IQueryPool*)_queryPool;
-        TL::Vector<VkMicromapEXT> micromapHandles{self->device->m_arena};
-        micromapHandles.reserve(micromaps.size());
+        TL_ASSERT(micromaps.size() <= Limits::AccelerationStructures, "Too many micromaps in one query command");
+        TL::InlineVector<VkMicromapEXT, Limits::AccelerationStructures> micromapHandles;
         for (const auto* micromap : micromaps)
         {
             auto vkMicromap = (IMicromap*)micromap;

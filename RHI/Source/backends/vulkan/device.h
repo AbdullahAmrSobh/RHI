@@ -1,11 +1,13 @@
 #pragma once
 
-#include <TL/Ptr.hpp>
-#include <TL/Stacktrace.hpp>
-#include <TL/Containers/Vector.hpp>
-#include <TL/Containers/Map.hpp>
+#include <TL/Log.hpp>
 #include <TL/Utils.hpp>
 #include <TL/Fmt.hpp>
+#include <TL/Containers/Vector.hpp>
+#include <TL/Containers/StringView.hpp>
+
+#include <cstddef>
+#include <mutex>
 
 // #define VK_USE_PLATFORM_WIN32_KHR
 #include <volk.h>
@@ -17,61 +19,121 @@
 
 namespace RHI::Vulkan
 {
+
+    enum class DeferredResourceType : uint8_t
+    {
+        Allocation,
+        Buffer,
+        BufferView,
+        Image,
+        ImageView,
+        Sampler,
+        Pipeline,
+        DescriptorPool,
+        QueryPool,
+        Swapchain,
+        Surface,
+        Semaphore,
+        AccelerationStructure,
+        Micromap,
+    };
+
+    struct DeferredResource
+    {
+        uint64_t timeline;
+        uint64_t handle;
+        DeferredResourceType type;
+    };
+
+    struct DeleteQueue
+    {
+        TL::Vector<DeferredResource> m_entries;
+
+        void shutdown(IDevice* device);
+
+        void Push(uint64_t timeline, VmaAllocation h) { Push(DeferredResourceType::Allocation, timeline, h); }
+
+        void Push(uint64_t timeline, VkBuffer h) { Push(DeferredResourceType::Buffer, timeline, h); }
+
+        void Push(uint64_t timeline, VkBufferView h) { Push(DeferredResourceType::BufferView, timeline, h); }
+
+        void Push(uint64_t timeline, VkImage h) { Push(DeferredResourceType::Image, timeline, h); }
+
+        void Push(uint64_t timeline, VkImageView h) { Push(DeferredResourceType::ImageView, timeline, h); }
+
+        void Push(uint64_t timeline, VkSampler h) { Push(DeferredResourceType::Sampler, timeline, h); }
+
+        void Push(uint64_t timeline, VkPipeline h) { Push(DeferredResourceType::Pipeline, timeline, h); }
+
+        void Push(uint64_t timeline, VkDescriptorPool h) { Push(DeferredResourceType::DescriptorPool, timeline, h); }
+
+        void Push(uint64_t timeline, VkQueryPool h) { Push(DeferredResourceType::QueryPool, timeline, h); }
+
+        void Push(uint64_t timeline, VkSwapchainKHR h) { Push(DeferredResourceType::Swapchain, timeline, h); }
+
+        void Push(uint64_t timeline, VkSurfaceKHR h) { Push(DeferredResourceType::Surface, timeline, h); }
+
+        void Push(uint64_t timeline, VkSemaphore h) { Push(DeferredResourceType::Semaphore, timeline, h); }
+
+        void Push(uint64_t timeline, VkAccelerationStructureKHR h) { Push(DeferredResourceType::AccelerationStructure, timeline, h); }
+
+        void Push(uint64_t timeline, VkMicromapEXT h) { Push(DeferredResourceType::Micromap, timeline, h); }
+
+        template<typename ResourceType>
+        void Push(DeferredResourceType type, uint64_t timeline, ResourceType resource)
+        {
+            uint64_t handle = std::bit_cast<uint64_t>(resource);
+#if TL_DEBUG
+            for (const DeferredResource& entry : m_entries)
+            {
+                TL_ASSERT(entry.type != type || entry.handle != handle, "Object was already requested for deletion");
+            }
+#endif
+            m_entries.push_back({.timeline = timeline, .handle = handle, .type = type});
+        }
+
+        void Flush(IDevice* device, uint64_t timeline);
+    };
+
     struct IQueue : RHI::Queue
     {
         IDevice* m_device;
         VkQueue m_queue;
+        VkSemaphore m_submissionTimeline = VK_NULL_HANDLE;
+        void* m_tracyContext = nullptr;
+        std::mutex m_tracyCollectMutex;
         uint32_t m_familyIndex;
         QueueType m_queueType;
-        std::atomic_uint64_t m_lastSubmitValue;
+        std::atomic_uint64_t m_lastSubmitValue{0};
 
-        VkResult Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex);
+        VkResult Init(IDevice* device, const char* debugName, uint32_t familyIndex, uint32_t queueIndex, VkQueueFlags queueFlags, uint32_t timestampValidBits);
         void Shutdown();
     };
 
     struct IDevice : RHI::Device
     {
-        IDevice();
-        ~IDevice();
+        BackendType m_backend;
+        DeviceLimits m_limits;
+        DeviceFeatures m_features;
+
+        VkInstance               m_instance                          = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT m_debugUtilsMessenger               = VK_NULL_HANDLE;
+        VkPhysicalDevice         m_physicalDevice                    = VK_NULL_HANDLE;
+        VkDevice                 m_device                            = VK_NULL_HANDLE;
+        VmaAllocator             m_deviceAllocator                   = VK_NULL_HANDLE;
+        IQueue                   m_queue[(uint32_t)QueueType::Count] = {};
+        BindGroupAllocator       m_bindGroupAllocator;
+        DeleteQueue              m_destroyQueue;
 
         ResultCode Init(const ApplicationInfo& appInfo);
         void Shutdown();
 
-        void SetDebugName(VkObjectType type, uint64_t handle, const char* name) const;
-
-        template<typename T>
-        void SetDebugName(T handle, const char* name) const
-        {
-            SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name);
-        }
-
-        template<typename T, typename... Args>
-        void SetDebugName(T handle, ::fmt::format_string<Args...> formatString, Args&&... args) const
-        {
-            auto name = TL::fmt(formatString, args...);
-            SetDebugName(GetObjectType<T>(), reinterpret_cast<uint64_t>(handle), name.c_str());
-        }
+        void SetDebugName(VkObjectType type, uint64_t handle, TL::StringView name) const;
 
         void WaitIdle();
 
         // Internal accessor returning backend queue state directly (facade-free).
         IQueue* getQueue(QueueType queueType) { return &m_queue[(uint32_t)queueType]; }
-
-        BackendType m_backend;
-        DeviceLimits m_limits;
-        DeviceFeatures m_features;
-
-        VkInstance m_instance = VK_NULL_HANDLE;
-        VkDebugUtilsMessengerEXT m_debugUtilsMessenger = VK_NULL_HANDLE;
-        VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
-        VkDevice m_device = VK_NULL_HANDLE;
-        VmaAllocator m_deviceAllocator = VK_NULL_HANDLE;
-        IQueue m_queue[(uint32_t)QueueType::Count] = {};
-        BindGroupAllocator m_bindGroupAllocator;
-        TL::Ptr<class DeleteQueue> m_destroyQueue = nullptr;
-        TL::Arena m_arena;
-
-        TL::IAllocator* m_objectAllocator = nullptr;
     };
 
     // Queue interface functions
@@ -140,95 +202,5 @@ namespace RHI::Vulkan
     SurfaceCapabilities swapchainGetSurfaceCapabilities(IDevice* self, Swapchain* swapchain);
     ResultCode swapchainResize(IDevice* self, Swapchain* swapchain, const ImageSize2D& size);
     ResultCode swapchainConfigure(IDevice* self, Swapchain* swapchain, const SwapchainConfigureInfo& configInfo);
-
-    using VmaImageAllocation = std::pair<VkImage, VmaAllocation>;
-    using VmaBufferAllocation = std::pair<VkBuffer, VmaAllocation>;
-
-    // Entry for any resource type
-    template<typename Resource>
-    struct ResourceDeleteQueueEntry
-    {
-        uint64_t timeline;
-        Resource resource;
-    };
-
-    class DeleteQueue
-    {
-    public:
-        void shutdown(IDevice* device);
-
-        // clang-format off
-        // simple handle pushes
-        void Push(uint64_t timeline, VmaAllocation h) { PushImpl(m_allocation, timeline, h); }
-        void Push(uint64_t timeline, VkBuffer h) { PushImpl(m_buffer, timeline, h); }
-        void Push(uint64_t timeline, VkBufferView h) { PushImpl(m_bufferView, timeline, h); }
-        void Push(uint64_t timeline, VkImage h) { PushImpl(m_image, timeline, h); }
-        void Push(uint64_t timeline, VkImageView h) { PushImpl(m_imageView, timeline, h); }
-        void Push(uint64_t timeline, VkSampler h) { PushImpl(m_sampler, timeline, h); }
-        void Push(uint64_t timeline, VkPipeline h) { PushImpl(m_pipeline, timeline, h); }
-        void Push(uint64_t timeline, VkDescriptorPool h) { PushImpl(m_descriptorPool, timeline, h); }
-        void Push(uint64_t timeline, VkQueryPool h) { PushImpl(m_queryPool, timeline, h); }
-        void Push(uint64_t timeline, VkSwapchainKHR h) { PushImpl(m_swapchain, timeline, h); }
-        void Push(uint64_t timeline, VkSurfaceKHR h) { PushImpl(m_surface, timeline, h); }
-        void Push(uint64_t timeline, VkSemaphore h) { PushImpl(m_semaphore, timeline, h); }
-        void Push(uint64_t timeline, VkAccelerationStructureKHR h) { PushImpl(m_accelerationStructure, timeline, h); }
-        void Push(uint64_t timeline, VkMicromapEXT h) { PushImpl(m_micromap, timeline, h); }
-        // clang-format on
-
-        void Flush(IDevice* device, uint64_t timeline);
-
-    private:
-        template<typename ResourceType>
-        void FlushQueue(IDevice* device, TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline);
-
-        // Returns a unique uint64_t per ResourceType, collision-free across types.
-        // Uses a static-local-variable address as a zero-cost type identity.
-        template<typename ResourceType>
-        static uint64_t typeKey()
-        {
-            static char s_tag;
-            return reinterpret_cast<uint64_t>(&s_tag);
-        }
-
-        // Generic push implementation for single-handle resources
-        template<typename ResourceType>
-        void PushImpl(TL::Vector<ResourceDeleteQueueEntry<ResourceType>>& queue, uint64_t timeline, ResourceType h)
-        {
-            static_assert(sizeof(ResourceType) <= sizeof(uint64_t), "ResourceType must fit in a uint64_t key");
-            uint64_t handleVal = 0;
-            memcpy(&handleVal, &h, sizeof(h));
-            uint64_t key = TL::HashCombine(typeKey<ResourceType>(), handleVal);
-
-            if (auto it = m_pending.find(key); it != m_pending.end())
-            {
-                auto st = TL::ReportStacktrace(it->second);
-                TL::LogError("Object was already requested for deletion at {}", st);
-                TL_UNREACHABLE();
-            }
-            else
-            {
-                m_pending.emplace(std::make_pair(key, TL::CaptureStacktrace()));
-            }
-
-            queue.emplace_back(ResourceDeleteQueueEntry<ResourceType>{timeline, h});
-        }
-
-    private:
-        TL::Vector<ResourceDeleteQueueEntry<VmaAllocation>> m_allocation;
-        TL::Vector<ResourceDeleteQueueEntry<VkBuffer>> m_buffer;
-        TL::Vector<ResourceDeleteQueueEntry<VkBufferView>> m_bufferView;
-        TL::Vector<ResourceDeleteQueueEntry<VkImage>> m_image;
-        TL::Vector<ResourceDeleteQueueEntry<VkImageView>> m_imageView;
-        TL::Vector<ResourceDeleteQueueEntry<VkSampler>> m_sampler;
-        TL::Vector<ResourceDeleteQueueEntry<VkPipeline>> m_pipeline;
-        TL::Vector<ResourceDeleteQueueEntry<VkDescriptorPool>> m_descriptorPool;
-        TL::Vector<ResourceDeleteQueueEntry<VkQueryPool>> m_queryPool;
-        TL::Vector<ResourceDeleteQueueEntry<VkSwapchainKHR>> m_swapchain;
-        TL::Vector<ResourceDeleteQueueEntry<VkSurfaceKHR>> m_surface;
-        TL::Vector<ResourceDeleteQueueEntry<VkSemaphore>> m_semaphore;
-        TL::Vector<ResourceDeleteQueueEntry<VkAccelerationStructureKHR>> m_accelerationStructure;
-        TL::Vector<ResourceDeleteQueueEntry<VkMicromapEXT>> m_micromap;
-        TL::Map<uint64_t, TL::Stacktrace> m_pending;
-    };
 
 } // namespace RHI::Vulkan

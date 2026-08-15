@@ -3,11 +3,35 @@
 #include <RHI/RHI.h>
 
 #include <TL/Assert.hpp>
+#include <TL/Log.hpp>
 
 #include <vk_mem_alloc.h>
 
 namespace RHI::Vulkan
 {
+    namespace Limits
+    {
+        inline constexpr size_t ColorAttachments       = 8;
+        inline constexpr size_t DescriptorSets         = 4;
+        inline constexpr size_t DescriptorBindings     = 64;
+        inline constexpr size_t DescriptorBatch        = 64;
+        inline constexpr size_t PushConstantRanges     = 16;
+        inline constexpr size_t ShaderStages           = 16;
+        inline constexpr size_t VertexBindings         = 32;
+        inline constexpr size_t VertexAttributes       = 64;
+        inline constexpr size_t QueueFences            = 16;
+        inline constexpr size_t QueueCommandBuffers    = 64;
+        inline constexpr size_t QueueSwapchains        = 8;
+        inline constexpr size_t CommandListsPerPool    = 64;
+        inline constexpr size_t CommandBatch           = 64;
+        inline constexpr size_t BarrierBatch           = 64;
+        inline constexpr size_t AccelerationStructures = 64;
+        inline constexpr size_t AccelerationGeometries = 64;
+        inline constexpr size_t EnumerationEntries     = 512;
+        inline constexpr size_t PhysicalDevices        = 16;
+        inline constexpr size_t QueueFamilies          = 32;
+    } // namespace Limits
+
     struct VulkanResult
     {
         VkResult result;
@@ -338,54 +362,6 @@ namespace RHI::Vulkan
         }
         TL_UNREACHABLE();
         return {};
-    }
-
-    template<typename T>
-    inline static VkObjectType GetObjectType()
-    {
-        if constexpr (std::is_same_v<T, VkInstance>) return VK_OBJECT_TYPE_INSTANCE;
-        else if constexpr (std::is_same_v<T, VkPhysicalDevice>) return VK_OBJECT_TYPE_PHYSICAL_DEVICE;
-        else if constexpr (std::is_same_v<T, VkDevice>) return VK_OBJECT_TYPE_DEVICE;
-        else if constexpr (std::is_same_v<T, VkQueue>) return VK_OBJECT_TYPE_QUEUE;
-        else if constexpr (std::is_same_v<T, VkSemaphore>) return VK_OBJECT_TYPE_SEMAPHORE;
-        else if constexpr (std::is_same_v<T, VkCommandBuffer>) return VK_OBJECT_TYPE_COMMAND_BUFFER;
-        else if constexpr (std::is_same_v<T, VkFence>) return VK_OBJECT_TYPE_FENCE;
-        else if constexpr (std::is_same_v<T, VkDeviceMemory>) return VK_OBJECT_TYPE_DEVICE_MEMORY;
-        else if constexpr (std::is_same_v<T, VkBuffer>) return VK_OBJECT_TYPE_BUFFER;
-        else if constexpr (std::is_same_v<T, VkImage>) return VK_OBJECT_TYPE_IMAGE;
-        else if constexpr (std::is_same_v<T, VkEvent>) return VK_OBJECT_TYPE_EVENT;
-        else if constexpr (std::is_same_v<T, VkQueryPool>) return VK_OBJECT_TYPE_QUERY_POOL;
-        else if constexpr (std::is_same_v<T, VkBufferView>) return VK_OBJECT_TYPE_BUFFER_VIEW;
-        else if constexpr (std::is_same_v<T, VkImageView>) return VK_OBJECT_TYPE_IMAGE_VIEW;
-        else if constexpr (std::is_same_v<T, VkShaderModule>) return VK_OBJECT_TYPE_SHADER_MODULE;
-        else if constexpr (std::is_same_v<T, VkPipelineCache>) return VK_OBJECT_TYPE_PIPELINE_CACHE;
-        else if constexpr (std::is_same_v<T, VkPipelineLayout>) return VK_OBJECT_TYPE_PIPELINE_LAYOUT;
-        else if constexpr (std::is_same_v<T, VkRenderPass>) return VK_OBJECT_TYPE_RENDER_PASS;
-        else if constexpr (std::is_same_v<T, VkPipeline>) return VK_OBJECT_TYPE_PIPELINE;
-        else if constexpr (std::is_same_v<T, VkDescriptorSetLayout>) return VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT;
-        else if constexpr (std::is_same_v<T, VkSampler>) return VK_OBJECT_TYPE_SAMPLER;
-        else if constexpr (std::is_same_v<T, VkDescriptorPool>) return VK_OBJECT_TYPE_DESCRIPTOR_POOL;
-        else if constexpr (std::is_same_v<T, VkDescriptorSet>) return VK_OBJECT_TYPE_DESCRIPTOR_SET;
-        else if constexpr (std::is_same_v<T, VkFramebuffer>) return VK_OBJECT_TYPE_FRAMEBUFFER;
-        else if constexpr (std::is_same_v<T, VkCommandPool>) return VK_OBJECT_TYPE_COMMAND_POOL;
-        else if constexpr (std::is_same_v<T, VkSurfaceKHR>) return VK_OBJECT_TYPE_SURFACE_KHR;
-        else if constexpr (std::is_same_v<T, VkSwapchainKHR>) return VK_OBJECT_TYPE_SWAPCHAIN_KHR;
-        else if constexpr (std::is_same_v<T, VkDebugReportCallbackEXT>) return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT;
-        else if constexpr (std::is_same_v<T, VkDisplayKHR>) return VK_OBJECT_TYPE_DISPLAY_KHR;
-        else if constexpr (std::is_same_v<T, VkDisplayModeKHR>) return VK_OBJECT_TYPE_DISPLAY_MODE_KHR;
-        else if constexpr (std::is_same_v<T, VkValidationCacheEXT>) return VK_OBJECT_TYPE_VALIDATION_CACHE_EXT;
-        else if constexpr (std::is_same_v<T, VkSamplerYcbcrConversion>) return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION;
-        else if constexpr (std::is_same_v<T, VkDescriptorUpdateTemplate>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE;
-        else if constexpr (std::is_same_v<T, VkCuModuleNVX>) return VK_OBJECT_TYPE_CU_MODULE_NVX;
-        else if constexpr (std::is_same_v<T, VkCuFunctionNVX>) return VK_OBJECT_TYPE_CU_FUNCTION_NVX;
-        else if constexpr (std::is_same_v<T, VkAccelerationStructureKHR>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
-        else if constexpr (std::is_same_v<T, VkAccelerationStructureNV>) return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV;
-        else if constexpr (std::is_same_v<T, VkDescriptorUpdateTemplateKHR>) return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR;
-        else if constexpr (std::is_same_v<T, VkSamplerYcbcrConversionKHR>) return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR;
-        else
-        {
-            return VK_OBJECT_TYPE_UNKNOWN;
-        }
     }
 
     inline static VkPipelineStageFlags2 ConvertPipelineStageFlags(TL::Flags<PipelineStage> pipelineStages)

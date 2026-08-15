@@ -16,6 +16,9 @@ set(RHI_BACKEND_VULKAN_LIBRARIES
 set(RHI_BACKEND_VULKAN_COMPILE_DEFINITIONS
     VK_NO_PROTOTYPES=1
     $<$<PLATFORM_ID:Windows>:VK_USE_PLATFORM_WIN32_KHR=1>
+    # RHI uses Volk instead of Vulkan's global prototypes, so Tracy must resolve
+    # Vulkan entry points through the instance/device symbol table.
+    TRACY_VK_USE_SYMBOL_TABLE
 )
 
 set(RHI_BACKEND_WEBGPU_SOURCES
