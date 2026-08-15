@@ -5,7 +5,7 @@
 #include <TL/Span.hpp>
 #include <TL/Flags.hpp>
 #include <TL/Compiler.hpp>
-#include <TL/Containers/Vector.hpp>
+#include <TL/Containers/InlineVector.hpp>
 #include <TL/Containers/String.hpp>
 #include <TL/Containers/StringView.hpp>
 
@@ -213,6 +213,13 @@ namespace RHI
         InputAttachment,
         AccelerationStructure,
         Count,
+    };
+
+    enum class SamplerBindingType
+    {
+        Filtering,
+        NonFiltering,
+        Comparison,
     };
 
     enum class BindPoint
@@ -705,13 +712,15 @@ namespace RHI
 
     // Bind groups & layout
 
-    struct ShaderBinding
+    struct ShaderBinding // TODO: Reorganize this structure
     {
-        BindingType            type         = BindingType::None;
-        Access                 access       = Access::Read;
-        uint32_t               arrayCount   = 1;
-        TL::Flags<ShaderStage> stages       = ShaderStage::None;
-        size_t                 bufferStride = 0;
+        BindingType            type          = BindingType::None;
+        Access                 access        = Access::Read;
+        uint32_t               arrayCount    = 1;
+        TL::Flags<ShaderStage> stages        = ShaderStage::None;
+        size_t                 bufferStride  = 0;
+        SamplerBindingType     samplerType   = SamplerBindingType::Filtering;
+        ImageViewType          imageViewType = ImageViewType::View2D;
     };
 
     struct BindGroupLayoutCreateInfo
@@ -1296,11 +1305,12 @@ namespace RHI
 
     struct SwapchainCreateInfo
     {
-        const char* name;
+        const char* name = nullptr;
 
         union
         {
-            Win32WindowDesc win32Window;
+            Win32WindowDesc win32Window = {};
+            const char*     htmlCanvasSelector;
         };
     };
 
@@ -1323,8 +1333,7 @@ namespace RHI
         TL::Flags<ImageUsage>           usages;
         TL::Flags<SwapchainPresentMode> presentModes;
         TL::Flags<SwapchainAlphaMode>   alphaModes;
-        // TODO: move out (no allocations in the interface) or make it span to const Format that is owned by the swapchain?
-        TL::Vector<Format>              formats;
+        TL::InlineVector<Format, 256>   formats;
     };
 
     struct SwapchainAcquireResult
@@ -1361,7 +1370,8 @@ namespace RHI
 
         DeviceLimits                   GetLimits() const;
 
-        uint64_t                       GarbageCollect(uint64_t graphicsTimeline);
+        uint64_t                       GarbageCollect();
+        RHI_DEPRECATED uint64_t        GarbageCollect(uint64_t graphicsTimeline);
         uint64_t                       GetNativeHandle(NativeHandleType type, uint64_t handle);
 
         void                           WaitIdle();
@@ -1400,6 +1410,10 @@ namespace RHI
         uint64_t                       GetBufferDeviceAddress(Buffer* buffer);
         DeviceMemoryPtr                MapBuffer(Buffer* buffer, uint64_t offset, uint64_t sizeBytes);
         void                           UnmapBuffer(Buffer* buffer);
+
+        // For WebGPU these should be faster than raw mem copies
+        void                           mappedBufferReadMappedRanges(DeviceMemoryPtr* dst, void* src, size_t size);
+        void                           mappedBufferWriteMappedRanges(void* dst, const DeviceMemoryPtr* src, size_t size);
 
         // Image
         Image*                         CreateImage(const ImageCreateInfo& createInfo);

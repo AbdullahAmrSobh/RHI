@@ -2,6 +2,14 @@
 
 #include <RHI/RHI.h>
 
+#include "common.h"
+
+#include <webgpu/webgpu.h>
+
+#include <TL/Containers/InlineVector.hpp>
+
+#include <atomic>
+
 namespace RHI::WebGPU
 {
     struct IDevice;
@@ -10,64 +18,84 @@ namespace RHI::WebGPU
     {
         using Fence::Fence;
 
-        ResultCode Init(IDevice* device, const FenceCreateInfo& createInfo);
+        void Init(IDevice* device, const FenceCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        std::atomic_uint64_t value = 0;
     };
 
     struct IBindGroupLayout : BindGroupLayout
     {
         using BindGroupLayout::BindGroupLayout;
 
-        ResultCode Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
+        void Init(IDevice* device, const BindGroupLayoutCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUBindGroupLayout handle = nullptr;
+        TL::InlineVector<ShaderBinding, MaxBindingsPerGroup> bindings;
     };
 
     struct IBindGroup : BindGroup
     {
         using BindGroup::BindGroup;
 
-        ResultCode Init(IDevice* device, const BindGroupCreateInfo& createInfo);
+        void Init(IDevice* device, const BindGroupCreateInfo& createInfo);
         void Shutdown(IDevice* device);
         void Update(IDevice* device, const BindGroupUpdateInfo& updateInfo);
+
+        WGPUBindGroup handle = nullptr;
+        IBindGroupLayout* layout = nullptr;
+        TL::InlineVector<WGPUBindGroupEntry, MaxBindingsPerGroup> entries;
+        const char* label = nullptr;
     };
 
     struct IShaderModule : ShaderModule
     {
         using ShaderModule::ShaderModule;
 
-        ResultCode Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
+        void Init(IDevice* device, const ShaderModuleCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUShaderModule handle = nullptr;
     };
 
     struct IPipelineLayout : PipelineLayout
     {
         using PipelineLayout::PipelineLayout;
 
-        ResultCode Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
+        void Init(IDevice* device, const PipelineLayoutCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUPipelineLayout handle = nullptr;
     };
 
     struct IGraphicsPipeline : GraphicsPipeline
     {
         using GraphicsPipeline::GraphicsPipeline;
 
-        ResultCode Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
+        void Init(IDevice* device, const GraphicsPipelineCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPURenderPipeline handle = nullptr;
+        IPipelineLayout* layout = nullptr;
     };
 
     struct IComputePipeline : ComputePipeline
     {
         using ComputePipeline::ComputePipeline;
 
-        ResultCode Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
+        void Init(IDevice* device, const ComputePipelineCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUComputePipeline handle = nullptr;
+        IPipelineLayout* layout = nullptr;
     };
 
     struct IRayTracingPipeline : RayTracingPipeline
     {
         using RayTracingPipeline::RayTracingPipeline;
 
-        ResultCode Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo);
+        void Init(IDevice* device, const RayTracingPipelineCreateInfo& createInfo);
         void Shutdown(IDevice* device);
         void GetShaderBindingTableEntry(IDevice* device, uint32_t group, size_t size, void* dstHandle);
     };
@@ -76,42 +104,59 @@ namespace RHI::WebGPU
     {
         using QueryPool::QueryPool;
 
-        ResultCode Init(IDevice* device, const QueryPoolCreateInfo& createInfo);
+        void Init(IDevice* device, const QueryPoolCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUQuerySet handle = nullptr;
     };
 
     struct IBuffer : Buffer
     {
         using Buffer::Buffer;
 
-        ResultCode Init(IDevice* device, const BufferCreateInfo& createInfo);
+        void Init(IDevice* device, const BufferCreateInfo& createInfo);
         void Shutdown(IDevice* device);
         void* Map(IDevice* device);
         void Unmap(IDevice* device);
+
+        WGPUBuffer handle = nullptr;
+        size_t size = 0;
+        bool hostMapped = false;
     };
 
     struct IImage : Image
     {
         using Image::Image;
 
-        ResultCode Init(IDevice* device, const ImageCreateInfo& createInfo);
-        ResultCode Init(IDevice* device, const ImageViewCreateInfo& createInfo);
+        void Init(IDevice* device, const ImageCreateInfo& createInfo);
+        void Init(IDevice* device, const ImageViewCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUTexture handle = nullptr;
+        WGPUTextureView viewHandle = nullptr;
+        bool ownsTexture = false;
+        ImageSize3D size = {};
+        Format format = Format::Unknown;
+        ImageType type = ImageType::None;
+        uint32_t arrayCount = 1;
+        ImageSubresourceRange subresources = {};
     };
 
     struct ISampler : Sampler
     {
         using Sampler::Sampler;
 
-        ResultCode Init(IDevice* device, const SamplerCreateInfo& createInfo);
+        void Init(IDevice* device, const SamplerCreateInfo& createInfo);
         void Shutdown(IDevice* device);
+
+        WGPUSampler handle = nullptr;
     };
 
     struct IAccelerationStructure : AccelerationStructure
     {
         using AccelerationStructure::AccelerationStructure;
 
-        ResultCode Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo);
+        void Init(IDevice* device, const AccelerationStructureCreateInfo& createInfo);
         void Shutdown(IDevice* device);
     };
 
@@ -119,7 +164,7 @@ namespace RHI::WebGPU
     {
         using Micromap::Micromap;
 
-        ResultCode Init(IDevice* device, const MicromapCreateInfo& createInfo);
+        void Init(IDevice* device, const MicromapCreateInfo& createInfo);
         void Shutdown(IDevice* device);
     };
 
@@ -127,7 +172,7 @@ namespace RHI::WebGPU
     {
         using Swapchain::Swapchain;
 
-        ResultCode Init(IDevice* device, const SwapchainCreateInfo& createInfo);
+        void Init(IDevice* device, const SwapchainCreateInfo& createInfo);
         void Shutdown(IDevice* device);
 
         uint32_t GetImagesCount() const;
@@ -135,5 +180,10 @@ namespace RHI::WebGPU
         SurfaceCapabilities GetSurfaceCapabilities(IDevice* device) const;
         ResultCode ResizeSwapchain(IDevice* device, const ImageSize2D& size);
         ResultCode ConfigureSwapchain(IDevice* device, const SwapchainConfigureInfo& configInfo);
+
+        WGPUSurface surface = nullptr;
+        WGPUSurfaceTexture surfaceTexture = {};
+        IImage image;
+        SwapchainConfigureInfo configuration = {};
     };
 } // namespace RHI::WebGPU

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.19)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<CONFIG>)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<CONFIG>)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<CONFIG>)
 
 project(
     RHI
@@ -26,6 +26,7 @@ endif()
 
 option(TRACY_ENABLE "Enable Tracy profiler" ${PROJECT_IS_TOP_LEVEL})
 option(RHI_DEBUG "Enable RHI debug mode" ${PROJECT_IS_TOP_LEVEL})
+option(RHI_BUILD_EXAMPLES "Build RHI examples" ${PROJECT_IS_TOP_LEVEL})
 if(NOT EMSCRIPTEN)
     option(RHI_BACKEND_VULKAN "Enable RHI Vulkan 1.3 Backend" ON)
     option(RHI_BACKEND_D3D12 "Enable RHI DirectX 12 Backend" OFF)
@@ -51,6 +52,12 @@ endif()
 # ---- Add dependencies ----
 
 include(cmake/CPM.cmake)
+
+set(RHI_TRACY_ENABLE ${TRACY_ENABLE})
+if(EMSCRIPTEN)
+    set(RHI_TRACY_ENABLE OFF)
+endif()
+set(TL_ENABLE_TRACY ${RHI_TRACY_ENABLE} CACHE BOOL "Enable Tracy profiler in TL" FORCE)
 
 CPMAddPackage(
     NAME           TL
@@ -81,21 +88,33 @@ if(RHI_BACKEND_D3D12)
 endif()
 
 if(RHI_BACKEND_WEBGPU)
+	if(EMSCRIPTEN)
+		set(DAWN_SUPPORTS_CXX_MODULES OFF CACHE BOOL "Disable unused Dawn C++ modules for WebAssembly" FORCE)
+	endif()
+
 	CPMAddPackage(
 		NAME           dawn
 		GIT_REPOSITORY https://dawn.googlesource.com/dawn
-		GIT_TAG        chromium/7827
-		DOWNLOAD_ONLY  YES
+		GIT_TAG        chromium/8008
 		OPTIONS
 			"DAWN_ENABLE_D3D11 OFF"
 			"DAWN_ENABLE_NULL OFF"
+			"DAWN_BUILD_MONOLITHIC_LIBRARY STATIC"
 			"DAWN_BUILD_SAMPLES OFF"
+			"DAWN_FETCH_DEPENDENCIES ON"
 			"DAWN_USE_GLFW OFF"
 			"DAWN_USE_WAYLAND OFF"
 			"DAWN_USE_WINDOWS_UI OFF"
 			"DAWN_USE_X11 OFF"
 			"TINT_BUILD_TESTS OFF"
 	)
+
+	if(EMSCRIPTEN)
+		set(RHI_EMDAWNWEBGPU_PORT "${CMAKE_BINARY_DIR}/emdawnwebgpu_pkg/emdawnwebgpu.port.py")
+	endif()
 endif()
 
 add_subdirectory(RHI)
+if(EMSCRIPTEN AND RHI_BACKEND_WEBGPU AND RHI_BUILD_EXAMPLES)
+    add_subdirectory(Examples/WebGPU)
+endif()

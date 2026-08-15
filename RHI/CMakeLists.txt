@@ -30,12 +30,32 @@ set(RHI_BACKEND_WEBGPU_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/webgpu/command-list.cpp
 )
 
+set(RHI_BACKEND_D3D12_SOURCES
+    # Headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/common.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/device.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/resources.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/command-list.h
+    # Sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/device-stubs.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/resources-stubs.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/backends/D3D12/command-list-stubs.cpp
+)
+set(RHI_BACKEND_D3D12_LIBRARIES
+    D3D12MemoryAllocator
+    d3d12
+    dxgi
+    dxguid
+)
+
 # Only one backend may be compiled into RHI.cpp's dispatch table at a time.
-# WebGPU takes precedence when Vulkan is disabled (e.g. Emscripten builds).
-if(RHI_BACKEND_WEBGPU AND NOT RHI_BACKEND_VULKAN)
-    set(RHI_COMPILE_BACKEND_DEFINE RHI_COMPILE_BACKEND_WEBGPU=1)
-else()
+# Keep the Vulkan default, then select D3D12 or WebGPU when Vulkan is disabled.
+if(RHI_BACKEND_VULKAN)
     set(RHI_COMPILE_BACKEND_DEFINE RHI_COMPILE_BACKEND_VULKAN=1)
+elseif(RHI_BACKEND_D3D12)
+    set(RHI_COMPILE_BACKEND_DEFINE RHI_COMPILE_BACKEND_D3D12=1)
+elseif(RHI_BACKEND_WEBGPU)
+    set(RHI_COMPILE_BACKEND_DEFINE RHI_COMPILE_BACKEND_WEBGPU=1)
 endif()
 
 add_library(RHI STATIC
@@ -43,6 +63,7 @@ add_library(RHI STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Include/RHI/Reflect.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/RHI.cpp
     $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_SOURCES},>
+    $<IF:$<BOOL:${RHI_BACKEND_D3D12}>,${RHI_BACKEND_D3D12_SOURCES},>
     $<IF:$<BOOL:${RHI_BACKEND_WEBGPU}>,${RHI_BACKEND_WEBGPU_SOURCES},>
 )
 add_library(RHI::RHI ALIAS RHI)
@@ -51,6 +72,7 @@ target_include_directories(RHI
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Include/"
     PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Export>"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+    PRIVATE $<$<BOOL:${RHI_BACKEND_D3D12}>:${RHI_dma_SOURCE_DIR}/include>
 )
 
 include(GenerateExportHeader)
@@ -70,7 +92,7 @@ target_compile_definitions(RHI
         RHI_BACKEND_VULKAN=$<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,1,0>
         RHI_BACKEND_WEBGPU=$<IF:$<BOOL:${RHI_BACKEND_WEBGPU}>,1,0>
     PRIVATE
-        TRACY_ENABLE=$<IF:$<BOOL:${TRACY_ENABLE}>,1,0>
+        $<$<BOOL:${RHI_TRACY_ENABLE}>:TRACY_ENABLE>
         $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_COMPILE_DEFINITIONS},>
 
         ${RHI_COMPILE_BACKEND_DEFINE}
@@ -81,4 +103,14 @@ target_link_libraries(RHI
         TL
     PRIVATE
         $<IF:$<BOOL:${RHI_BACKEND_VULKAN}>,${RHI_BACKEND_VULKAN_LIBRARIES},>
+        $<IF:$<BOOL:${RHI_BACKEND_D3D12}>,${RHI_BACKEND_D3D12_LIBRARIES},>
 )
+
+if (RHI_BACKEND_WEBGPU)
+    if(EMSCRIPTEN)
+        add_dependencies(RHI emdawnwebgpu_pkg)
+        target_compile_options(RHI PRIVATE "--use-port=${RHI_EMDAWNWEBGPU_PORT}")
+    else()
+        target_link_libraries(RHI PRIVATE dawn::webgpu_dawn)
+    endif()
+endif()

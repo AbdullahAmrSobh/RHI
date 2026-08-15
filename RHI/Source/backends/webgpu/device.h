@@ -6,24 +6,33 @@
 #include "common.h"
 #include "resources.h"
 
+#include <webgpu/webgpu.h>
+
 namespace RHI::WebGPU
 {
     struct IDevice;
 
     struct IQueue : RHI::Queue
     {
-        ResultCode Init(IDevice* device, const char* debugName, QueueType queueType);
+        void Init(IDevice* device, const char* debugName);
         void Shutdown();
+
+        WGPUQueue m_queue = nullptr;
     };
 
     struct IDevice : RHI::Device
     {
-        IDevice();
-        ~IDevice();
-
-        ResultCode Init(const ApplicationInfo& appInfo);
+        void Init(const ApplicationInfo& appInfo);
         void Shutdown();
         void WaitIdle();
+
+        DeviceFeatures m_features = {};
+        DeviceLimits m_limits = {};
+
+        WGPUInstance m_instance = nullptr;
+        WGPUAdapter m_adapter = nullptr;
+        WGPUDevice m_device = nullptr;
+        IQueue m_queue;
     };
 
     void queueBeginAnnotation(IQueue* self, const char* name, uint32_t bgra);

@@ -228,6 +228,17 @@ namespace RHI::Debug
         return "---";
     }
 
+    inline static constexpr const char* ToString(SamplerBindingType e)
+    {
+        switch (e)
+        {
+        case SamplerBindingType::Filtering:    return "SamplerBindingType::Filtering";
+        case SamplerBindingType::NonFiltering: return "SamplerBindingType::NonFiltering";
+        case SamplerBindingType::Comparison:   return "SamplerBindingType::Comparison";
+        }
+        TL_UNREACHABLE();
+        return "---";
+    }
     inline static constexpr const char* ToString(ImageAspect e)
     {
         switch (e)
@@ -539,6 +550,10 @@ namespace RHI::Debug
         out += ToString(ci.stages);
         out += ", bufferStride: ";
         out += std::to_string(ci.bufferStride);
+        out += ", samplerType: ";
+        out += ToString(ci.samplerType);
+        out += ", imageViewType: ";
+        out += ToString(ci.imageViewType);
         out += " }";
         return out;
     }

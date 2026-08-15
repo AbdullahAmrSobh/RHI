@@ -2,18 +2,35 @@
 
 #include <RHI/RHI.h>
 
+#include "common.h"
+
+#include <webgpu/webgpu.h>
+
+#include <TL/Containers/InlineVector.hpp>
+
 namespace RHI::WebGPU
 {
     struct IDevice;
+    struct ICommandList;
 
     struct ICommandPool : RHI::CommandPool
     {
-        ResultCode Init(IDevice* device, const CommandPoolCreateInfo& createInfo);
+        void Init(IDevice* device);
         void Shutdown(IDevice* device);
+
+        IDevice* device = nullptr;
+        TL::InlineVector<ICommandList*, MaxCommandListsPerPool> commandLists;
     };
 
     struct ICommandList : RHI::CommandList
     {
+        void Reset();
+
+        IDevice* device = nullptr;
+        WGPUCommandEncoder encoder = nullptr;
+        WGPUCommandBuffer commandBuffer = nullptr;
+        WGPURenderPassEncoder renderPass = nullptr;
+        WGPUComputePassEncoder computePass = nullptr;
     };
 
     void commandPoolReset(ICommandPool* self);

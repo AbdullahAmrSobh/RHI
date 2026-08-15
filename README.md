@@ -6,17 +6,17 @@
 
 RHI requires the following to build:
 
-> cmake -DCMAKE_BUILD_TYPE:STRING=Debug -S ./ -B ./build
+> cmake -S . -B build/windows -G "Ninja Multi-Config"
 
-> cmake --build /build --config Debug --target all
+> cmake --build build/windows --config Debug --target all
 
 ## Build WebAssembly
 
 requires EMSDK 4.0+
 
-> emcmake cmake -DCMAKE_BUILD_TYPE:STRING=Debug -S ./ -B ./build
+> emcmake cmake -S . -B build/webassembly -G "Ninja Multi-Config"
 
-> cmake --build /build --config Debug --target all
+> cmake --build build/webassembly --config Debug --target all
 
 ## Docs
 
